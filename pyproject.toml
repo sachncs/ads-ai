@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ads-ai"
+version = "0.1.0"
+description = "A production-grade, multi-agent AI advertising pipeline for end-to-end campaign generation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "sachn-cs", email = "chakravarthy1393966@gmail.com" },
+]
+keywords = [
+    "ai",
+    "advertising",
+    "multi-agent",
+    "marketing",
+    "automation",
+    "gemini",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "google-genai>=0.1.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.20",
+]
+lint = [
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+dev = [
+    "hatch",
+    "pre-commit",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/sachn-cs/ads-ai"
+Documentation = "https://github.com/sachn-cs/ads-ai#readme"
+Repository = "https://github.com/sachn-cs/ads-ai"
+Issues = "https://github.com/sachn-cs/ads-ai/issues"
+
+[project.scripts]
+ads-ai = "ads_ai.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ads_ai"]
+
+[tool.hatch.version]
+path = "src/ads_ai/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
