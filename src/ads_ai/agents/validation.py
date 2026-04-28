@@ -98,7 +98,8 @@ class ExternalValidationAgent(BaseAgent):
         - GROUNDEDNESS: Base the audit ONLY on provided logs and inputs.
         - OUTPUT DISCIPLINE: Return results as a structured ExternalValidationReport JSON object.
         """
-            report = self.generate(prompt, response_schema=ExternalValidationPlan)
+            report = self.generate(prompt,
+                                   response_schema=ExternalValidationPlan)
             elapsed = time.perf_counter() - start
             logger.info(
                 "design_validation completed variant_count=%d elapsed=%.3fs",

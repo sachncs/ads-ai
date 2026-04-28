@@ -54,7 +54,8 @@ class BudgetInferenceAgent(BaseAgent):
             google.api_core.exceptions.InternalServerError: If inference fails.
             ValueError: If response parsing fails.
         """
-        logger.info("infer_budget started goal=%s platforms=%s", goal, platforms)
+        logger.info("infer_budget started goal=%s platforms=%s", goal,
+                    platforms)
         start = time.perf_counter()
         try:
             prompt = f"""
@@ -87,7 +88,8 @@ class BudgetInferenceAgent(BaseAgent):
           platform rather than spreading thin.
         - OUTPUT DISCIPLINE: Return results as a structured BudgetInferenceReport JSON object.
         """
-            report = self.generate(prompt, response_schema=BudgetInferenceReport)
+            report = self.generate(prompt,
+                                   response_schema=BudgetInferenceReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "infer_budget completed goal=%s elapsed=%.3fs",

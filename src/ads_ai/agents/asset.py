@@ -92,7 +92,8 @@ class AssetProductionAgent(BaseAgent):
           from the strategy.
         - OUTPUT DISCIPLINE: Return results as a structured AssetProductionReport JSON object.
         """
-            report = self.generate(prompt, response_schema=AssetProductionReport)
+            report = self.generate(prompt,
+                                   response_schema=AssetProductionReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "plan_production completed variant_count=%d elapsed=%.3fs",

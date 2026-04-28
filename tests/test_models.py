@@ -69,9 +69,11 @@ class TestStep1Models:
             "product_name": "ErgoRest Chair",
             "ad_intent": "Drive Sales",
             "intent_explanation": "Direct conversion goal.",
-            "kpis": [
-                {"name": "CPA", "target_value": "<$50", "measurement_method": "FB Pixel"}
-            ],
+            "kpis": [{
+                "name": "CPA",
+                "target_value": "<$50",
+                "measurement_method": "FB Pixel"
+            }],
             "pre_release_targets": {
                 "clarity_score_target": 80,
                 "brand_linkage_score_target": 75,
@@ -79,23 +81,25 @@ class TestStep1Models:
                 "message_retention_likelihood": "Medium",
                 "simulated_intent_score": "7/10",
             },
-            "audience_personas": [
-                {
-                    "demographics": "Remote workers",
-                    "motivation": "Back pain relief",
-                    "pain_point": "Uncomfortable chairs",
-                    "buying_trigger": "New home office setup",
-                    "likely_objection": "Price",
-                }
-            ],
+            "audience_personas": [{
+                "demographics": "Remote workers",
+                "motivation": "Back pain relief",
+                "pain_point": "Uncomfortable chairs",
+                "buying_trigger": "New home office setup",
+                "likely_objection": "Price",
+            }],
             "message_strategy": {
                 "value_proposition": "The last chair you'll ever need.",
                 "message_pillars": ["Comfort", "Durability", "Style"],
                 "tone": "Authoritative",
                 "emotional_trigger": "Relief",
             },
-            "creative_constraints": {"max_duration": 30},
-            "decision_thresholds": {"min_score": 0.7},
+            "creative_constraints": {
+                "max_duration": 30
+            },
+            "decision_thresholds": {
+                "min_score": 0.7
+            },
         }
         model = StrategyBrief(**data)
         assert model.product_name == "ErgoRest Chair"
@@ -111,13 +115,11 @@ class TestStep3Models:
             "concept_title": "The Infinite Hook",
             "core_idea": "A chair that disappears as you sit.",
             "hook": "Stop settling for back pain.",
-            "script_scenes": [
-                {
-                    "description": "Person sitting down.",
-                    "visual_cues": "Close up on spine.",
-                    "dialogue_vo": "Your back deserves better.",
-                }
-            ],
+            "script_scenes": [{
+                "description": "Person sitting down.",
+                "visual_cues": "Close up on spine.",
+                "dialogue_vo": "Your back deserves better.",
+            }],
             "brand_integration": "Logo appears on the headrest.",
             "cta": "Shop ErgoRest.",
             "video_prompt": "Cinematic 4k shot of an office.",
@@ -155,9 +157,11 @@ class TestStep4Models:
             },
             "pacing_score": 80,
             "sections_drag_rush": [],
-            "drop_off_risk_timeline": [
-                {"segment": "0:05", "risk_severity": "Low", "cause": "Transition"}
-            ],
+            "drop_off_risk_timeline": [{
+                "segment": "0:05",
+                "risk_severity": "Low",
+                "cause": "Transition"
+            }],
             "redundancy_score": 10,
             "elements_to_remove": [],
             "transition_quality_score": 90,

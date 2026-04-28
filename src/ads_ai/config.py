@@ -37,7 +37,6 @@ DEFAULT_RETRY_DELAY = 5
 DEFAULT_LOG_LEVEL = "INFO"
 """Fallback log level when not specified via environment."""
 
-
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------

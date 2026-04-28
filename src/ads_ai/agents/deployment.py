@@ -100,7 +100,8 @@ class DeploymentExperimentationAgent(BaseAgent):
         - OUTPUT DISCIPLINE: Return results as a structured DeploymentExperimentationReport
           JSON object.
         """
-            report = self.generate(prompt, response_schema=DeploymentExperimentationReport)
+            report = self.generate(
+                prompt, response_schema=DeploymentExperimentationReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "plan_deployment completed variant_count=%d elapsed=%.3fs",

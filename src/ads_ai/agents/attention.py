@@ -63,9 +63,8 @@ class AttentionHeuristicAgent(BaseAgent):
         )
         start = time.perf_counter()
         try:
-            diag_json = (
-                diagnostics.model_dump_json() if diagnostics else "N/A (Independent Evaluation)"
-            )
+            diag_json = (diagnostics.model_dump_json()
+                         if diagnostics else "N/A (Independent Evaluation)")
             prompt = f"""
         Role: Senior Attention Architect & Media Psychologist.
         Objective: Use visual and narrative heuristics to predict an ad's ability to

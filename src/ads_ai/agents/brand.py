@@ -92,7 +92,8 @@ class BrandLinkageAgent(BaseAgent):
           must be flagged as a "Risk."
         - OUTPUT DISCIPLINE: Return results as a structured BrandLinkageEvaluation JSON object.
         """
-            report = self.generate(prompt, response_schema=BrandLinkageEvaluation)
+            report = self.generate(prompt,
+                                   response_schema=BrandLinkageEvaluation)
             elapsed = time.perf_counter() - start
             logger.info(
                 "evaluate completed concept=%s elapsed=%.3fs",

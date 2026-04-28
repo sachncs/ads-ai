@@ -90,7 +90,8 @@ class DiagnosticsAgent(BaseAgent):
           density with minimum friction.
         - OUTPUT DISCIPLINE: Return results as a structured DiagnosticsEvaluation JSON object.
         """
-            report = self.generate(prompt, response_schema=DiagnosticsEvaluation)
+            report = self.generate(prompt,
+                                   response_schema=DiagnosticsEvaluation)
             elapsed = time.perf_counter() - start
             logger.info(
                 "evaluate completed concept=%s elapsed=%.3fs",

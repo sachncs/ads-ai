@@ -42,8 +42,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
         A configured ``ArgumentParser`` instance.
     """
     parser = argparse.ArgumentParser(
-        description="Run the ads.ai multi-agent advertising pipeline.",
-    )
+        description="Run the ads.ai multi-agent advertising pipeline.",)
 
     parser.add_argument(
         "--url",

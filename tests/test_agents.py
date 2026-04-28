@@ -105,7 +105,8 @@ class TestBaseAgent:
     def test_generate_fail_non_503(self) -> None:
         """Should not retry on non-503 errors."""
         mock_client = MagicMock(spec=genai.Client)
-        mock_client.models.generate_content.side_effect = Exception("400 Bad Request")
+        mock_client.models.generate_content.side_effect = Exception(
+            "400 Bad Request")
 
         agent = BaseAgent(mock_client)
         with pytest.raises(Exception, match="400 Bad Request"):
@@ -116,7 +117,8 @@ class TestBaseAgent:
     def test_generate_max_retries_exceeded(self) -> None:
         """Should raise the last exception if all retries fail."""
         mock_client = MagicMock(spec=genai.Client)
-        mock_client.models.generate_content.side_effect = Exception("503 Still failing")
+        mock_client.models.generate_content.side_effect = Exception(
+            "503 Still failing")
 
         with patch("time.sleep", return_value=None):
             agent = BaseAgent(mock_client)
@@ -146,7 +148,11 @@ class TestSpecializedAgents:
             product_name="Test Product",
             ad_intent="Test Intent",
             intent_explanation="Test explanation",
-            kpis=[KPI(name="CTR", target_value="1%", measurement_method="Impressions")],
+            kpis=[
+                KPI(name="CTR",
+                    target_value="1%",
+                    measurement_method="Impressions")
+            ],
             pre_release_targets=PreReleaseTargets(
                 clarity_score_target=80,
                 brand_linkage_score_target=75,
@@ -202,30 +208,32 @@ class TestSpecializedAgents:
         from ads_ai.agents.models import CreativeVariants, AdScript, StrategyBrief, AudienceSegments, Scene
 
         mock_client = MagicMock(spec=genai.Client)
-        mock_variants = CreativeVariants(
-            variants=[
-                AdScript(
-                    concept_title="V1",
-                    core_idea="Idea 1",
-                    hook="Hook 1",
-                    script_scenes=[Scene(description="S1", visual_cues="V1", dialogue_vo="D1")],
-                    brand_integration="Logo at end.",
-                    cta="Buy now.",
-                    video_prompt="Cinematic 4k shot.",
-                    variant_name="Variant 1",
-                ),
-                AdScript(
-                    concept_title="V2",
-                    core_idea="Idea 2",
-                    hook="Hook 2",
-                    script_scenes=[Scene(description="S2", visual_cues="V2", dialogue_vo="D2")],
-                    brand_integration="Logo at start.",
-                    cta="Shop now.",
-                    video_prompt="Cinematic 4k render.",
-                    variant_name="Variant 2",
-                ),
-            ]
-        )
+        mock_variants = CreativeVariants(variants=[
+            AdScript(
+                concept_title="V1",
+                core_idea="Idea 1",
+                hook="Hook 1",
+                script_scenes=[
+                    Scene(description="S1", visual_cues="V1", dialogue_vo="D1")
+                ],
+                brand_integration="Logo at end.",
+                cta="Buy now.",
+                video_prompt="Cinematic 4k shot.",
+                variant_name="Variant 1",
+            ),
+            AdScript(
+                concept_title="V2",
+                core_idea="Idea 2",
+                hook="Hook 2",
+                script_scenes=[
+                    Scene(description="S2", visual_cues="V2", dialogue_vo="D2")
+                ],
+                brand_integration="Logo at start.",
+                cta="Shop now.",
+                video_prompt="Cinematic 4k render.",
+                variant_name="Variant 2",
+            ),
+        ])
 
         mock_response = MagicMock()
         mock_response.text = mock_variants.model_dump_json()
@@ -256,16 +264,29 @@ class TestSpecializedAgents:
         mock_report = CompositeReadinessReport(
             target_kpis=["ROI"],
             variant_decisions=[{
-                "concept_title": "V1",
-                "final_readiness_score": 85.0,
-                "is_ready": True,
-                "status": "GO",
-                "confidence": 0.9,
-                "primary_strength": "Hook",
-                "primary_blocker": None,
+                "concept_title":
+                    "V1",
+                "final_readiness_score":
+                    85.0,
+                "is_ready":
+                    True,
+                "status":
+                    "GO",
+                "confidence":
+                    0.9,
+                "primary_strength":
+                    "Hook",
+                "primary_blocker":
+                    None,
                 "category_breakdown": [
-                    CategoryScore(category="clarity", raw_score=85.0, weight=0.3, weighted_contribution=25.5),
-                    CategoryScore(category="brand", raw_score=85.0, weight=0.3, weighted_contribution=25.5),
+                    CategoryScore(category="clarity",
+                                  raw_score=85.0,
+                                  weight=0.3,
+                                  weighted_contribution=25.5),
+                    CategoryScore(category="brand",
+                                  raw_score=85.0,
+                                  weight=0.3,
+                                  weighted_contribution=25.5),
                 ],
             }],
             best_overall_variant="V1",
@@ -281,13 +302,24 @@ class TestSpecializedAgents:
         agent = ScoringAgent(mock_client)
         from ads_ai.agents.models import Scene
         result = agent.aggregate_and_score(
-            variants=[AdScript(
-                concept_title="V1", core_idea="I", hook="H",
-                script_scenes=[Scene(description="D", visual_cues="V", dialogue_vo="D")],
-                brand_integration="Logo.", cta="Buy.", video_prompt="4k.", variant_name="V1",
-            )],
+            variants=[
+                AdScript(
+                    concept_title="V1",
+                    core_idea="I",
+                    hook="H",
+                    script_scenes=[
+                        Scene(description="D", visual_cues="V", dialogue_vo="D")
+                    ],
+                    brand_integration="Logo.",
+                    cta="Buy.",
+                    video_prompt="4k.",
+                    variant_name="V1",
+                )
+            ],
             strategy=MagicMock(),
-            evaluations=[{"clarity": MagicMock()}],
+            evaluations=[{
+                "clarity": MagicMock()
+            }],
             intent_evaluation=MagicMock(),
         )
 
@@ -318,10 +350,14 @@ class TestSpecializedAgents:
                         )
                     ],
                     prioritized_issues=[
-                        PrioritizedIssue(issue="Weak hook", source_agent="Clarity", impact="High")
+                        PrioritizedIssue(issue="Weak hook",
+                                         source_agent="Clarity",
+                                         impact="High")
                     ],
                     suggested_actions=[
-                        IterationAction(action="Rewrite hook line", target_scene="Hook", rationale="Clarity")
+                        IterationAction(action="Rewrite hook line",
+                                        target_scene="Hook",
+                                        rationale="Clarity")
                     ],
                 )
             ],

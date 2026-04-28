@@ -52,7 +52,8 @@ class TestURLIntelligenceAgent:
         mock_response = MagicMock()
         mock_response.text = valid_json
         mock_client.models = MagicMock()
-        mock_client.models.generate_content = MagicMock(return_value=mock_response)
+        mock_client.models.generate_content = MagicMock(
+            return_value=mock_response)
 
         agent = URLIntelligenceAgent(mock_client)
         result = agent.parse_url("https://example.com")

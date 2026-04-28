@@ -96,7 +96,8 @@ class IterationControllerAgent(BaseAgent):
         - FEASIBILITY: Ensure every directive is technically executable by the Creative agent.
         - OUTPUT DISCIPLINE: Return results as a structured IterationControlReport JSON object.
         """
-            report = self.generate(prompt, response_schema=IterationControlReport)
+            report = self.generate(prompt,
+                                   response_schema=IterationControlReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "manage_iteration completed variant_count=%d elapsed=%.3fs",

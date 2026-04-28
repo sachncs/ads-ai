@@ -20,14 +20,16 @@ class FileOperationError(Exception):
 class ModelDumper(Protocol):
     """An object that exposes ``model_dump`` for serialization."""
 
-    def model_dump(self, mode: str = ...) -> dict[str, Any]: ...
+    def model_dump(self, mode: str = ...) -> dict[str, Any]:
+        ...
 
 
 @runtime_checkable
 class LegacyDumper(Protocol):
     """An object that exposes ``dict`` for serialization (Pydantic v1)."""
 
-    def dict(self, **kwargs: Any) -> dict[str, Any]: ...
+    def dict(self, **kwargs: Any) -> dict[str, Any]:
+        ...
 
 
 JsonScalar = str | int | float | bool
@@ -81,8 +83,7 @@ def save_json(
         else:
             raise TypeError(
                 f"data must be a dict, list, JSON scalar, or an object "
-                f"with model_dump/dict; got {type(data).__name__}"
-            )
+                f"with model_dump/dict; got {type(data).__name__}")
 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(serialized, f, indent=2, ensure_ascii=False)
@@ -93,5 +94,4 @@ def save_json(
         logger.debug("save_json(%s) completed in %.3fs", filepath.name, elapsed)
     if exc is not None:
         raise FileOperationError(
-            f"Failed to save JSON to {filepath}: {exc}"
-        ) from exc
+            f"Failed to save JSON to {filepath}: {exc}") from exc

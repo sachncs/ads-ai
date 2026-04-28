@@ -79,7 +79,6 @@ PASSING_DECISIONS = frozenset({"GO", "CONDITIONAL GO"})
 FAILING_DECISIONS = frozenset({"NO-GO", "CONDITIONAL GO"})
 """Set of variant decision labels that trigger refinement during iteration."""
 
-
 # ---------------------------------------------------------------------------
 # Pipeline Result Schema
 # ---------------------------------------------------------------------------
@@ -212,30 +211,22 @@ class OrchestratorPipeline:
             time.perf_counter() - step_start,
         )
 
-        product = (
-            f"{extracted.brand_name}: {extracted.product_description}\n"
-            f"Value Prop: {extracted.value_proposition}"
-        )
-        audience_desc = (
-            f"Primary: {extracted.target_audience}\n"
-            f"Segments: {', '.join(extracted.inferred_segments)}"
-        )
+        product = (f"{extracted.brand_name}: {extracted.product_description}\n"
+                   f"Value Prop: {extracted.value_proposition}")
+        audience_desc = (f"Primary: {extracted.target_audience}\n"
+                         f"Segments: {', '.join(extracted.inferred_segments)}")
 
         inferred_budget_report = self.maybe_infer_budget(
-            budget, goal, product, extracted, platforms
-        )
+            budget, goal, product, extracted, platforms)
         if inferred_budget_report is not None:
             budget = (
                 f"Recommended: {inferred_budget_report.recommended_budget} "
                 f"(Min: {inferred_budget_report.min_budget}, "
-                f"(Max: {inferred_budget_report.max_budget})"
-            )
+                f"(Max: {inferred_budget_report.max_budget})")
 
-        constraints = (
-            f"Tone: {extracted.brand_tone}. "
-            f"Funnel: {extracted.funnel_type}. "
-            f"CTA: {extracted.cta_type}"
-        )
+        constraints = (f"Tone: {extracted.brand_tone}. "
+                       f"Funnel: {extracted.funnel_type}. "
+                       f"CTA: {extracted.cta_type}")
 
         result = self.run(
             product=product,
@@ -365,7 +356,8 @@ class OrchestratorPipeline:
             platforms,
             constraints,
         )
-        save_json(creative_output, run_output_path / "step_3_creative_base.json")
+        save_json(creative_output,
+                  run_output_path / "step_3_creative_base.json")
         logger.info(
             "STEP 3 completed variant_count=%d elapsed=%.3fs",
             len(creative_output.variants),
@@ -399,8 +391,7 @@ class OrchestratorPipeline:
         if not approved_variants:
             logger.warning(
                 "No variants met the 'GO' threshold. "
-                "Falling back to the highest scoring variant for production."
-            )
+                "Falling back to the highest scoring variant for production.")
             best_decision = max(
                 readiness_report.variant_decisions,
                 key=lambda x: x.final_readiness_score,
@@ -514,16 +505,15 @@ class OrchestratorPipeline:
         logger.info("  Evaluating variant: %s", label)
 
         with ThreadPoolExecutor(max_workers=4) as executor:
-            future_clarity = executor.submit(self.clarity_agent.evaluate, variant, brief, personas)
-            future_brand = executor.submit(
-                self.brand_agent.evaluate, variant, brief, brand_assets, personas
-            )
+            future_clarity = executor.submit(self.clarity_agent.evaluate,
+                                             variant, brief, personas)
+            future_brand = executor.submit(self.brand_agent.evaluate, variant,
+                                           brief, brand_assets, personas)
             future_diagnostics = executor.submit(
-                self.diagnostics_agent.evaluate, variant, brief, personas, constraints
-            )
-            future_attention = executor.submit(
-                self.attention_agent.evaluate, variant, None, personas
-            )
+                self.diagnostics_agent.evaluate, variant, brief, personas,
+                constraints)
+            future_attention = executor.submit(self.attention_agent.evaluate,
+                                               variant, None, personas)
 
             clarity = future_clarity.result()
             brand = future_brand.result()
@@ -598,8 +588,7 @@ class OrchestratorPipeline:
                         personas,
                         brand_assets,
                         constraints,
-                    )
-                    for i, variant in enumerate(current_variants)
+                    ) for i, variant in enumerate(current_variants)
                 ]
                 for future in as_completed(futures):
                     evaluations.append(future.result())
@@ -639,7 +628,8 @@ class OrchestratorPipeline:
                 time.perf_counter() - step_start,
             )
 
-            all_converged = all(d.status == "GO" for d in readiness_report.variant_decisions)
+            all_converged = all(
+                d.status == "GO" for d in readiness_report.variant_decisions)
 
             if all_converged:
                 logger.info("All variants met thresholds (GO). Exiting loop.")
@@ -705,11 +695,8 @@ class OrchestratorPipeline:
                 continue
 
             plan = next(
-                (
-                    p
-                    for p in iteration_report.variant_plans
-                    if p.concept_title == variant.concept_title
-                ),
+                (p for p in iteration_report.variant_plans
+                 if p.concept_title == variant.concept_title),
                 None,
             )
 
@@ -718,7 +705,8 @@ class OrchestratorPipeline:
                 continue
 
             issue_descriptions = [
-                f"{issue.issue} ({issue.impact})" for issue in plan.prioritized_issues
+                f"{issue.issue} ({issue.impact})"
+                for issue in plan.prioritized_issues
             ]
             feedback = f"Issues: {issue_descriptions}"
             logger.info("  Refining variant: %s", variant.concept_title)
@@ -737,8 +725,7 @@ class OrchestratorPipeline:
                 "2. TARGETED MODIFICATION: Only modify scenes or copy explicitly "
                 "mentioned in the feedback.\n"
                 "3. SCHEMA COMPLIANCE: Return the improved script in the exact "
-                "same AdScript schema.\n"
-            )
+                "same AdScript schema.\n")
             refined = self.creative_agent.generate(
                 prompt,
                 response_schema=AdScript,
@@ -844,7 +831,8 @@ class OrchestratorPipeline:
         # STEP 10 -> HUMAN / EXTERNAL VALIDATION
         step_start = time.perf_counter()
         logger.info("STEP 10 -> HUMAN / EXTERNAL VALIDATION")
-        latest_iteration_report = iteration_reports[-1] if iteration_reports else None
+        latest_iteration_report = iteration_reports[
+            -1] if iteration_reports else None
         if latest_iteration_report is None:
             latest_iteration_report = IterationControlReport(
                 variant_plans=[],
@@ -903,7 +891,8 @@ class OrchestratorPipeline:
         video_paths: list[str] = []
 
         for i, variant in enumerate(approved_variants[:3]):
-            safe_product = re.sub(r"[^a-zA-Z0-9_\-]", "_", brief.product_name)[:20]
+            safe_product = re.sub(r"[^a-zA-Z0-9_\-]", "_",
+                                  brief.product_name)[:20]
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             video_filename = f"ad_{safe_product}_{i}_{timestamp}.mp4"
             video_output_path = output_dir / video_filename
@@ -914,14 +903,9 @@ class OrchestratorPipeline:
                 video_output_path,
             )
 
-            prod_plan = (
-                production_report.production_variants[i]
-                if i
-                < len(
-                    production_report.production_variants,
-                )
-                else production_report.production_variants[0]
-            )
+            prod_plan = (production_report.production_variants[i] if i < len(
+                production_report.production_variants,) else
+                         production_report.production_variants[0])
 
             result = self.video_agent.generate_video(
                 script=variant,

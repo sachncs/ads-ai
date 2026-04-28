@@ -98,7 +98,8 @@ class PlatformAdaptationAgent(BaseAgent):
         - OUTPUT DISCIPLINE: Return results as a structured PlatformAdaptationReport
           JSON object.
         """
-            report = self.generate(prompt, response_schema=PlatformAdaptationReport)
+            report = self.generate(prompt,
+                                   response_schema=PlatformAdaptationReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "adapt completed concept=%s platform_count=%d elapsed=%.3fs",

@@ -67,7 +67,8 @@ class TestOrchestratorPipeline:
              patch("ads_ai.pipeline.BudgetInferenceAgent"):
             return OrchestratorPipeline(mock_client)
 
-    def test_pipeline_run_success_first_pass(self, mock_orchestrator: OrchestratorPipeline) -> None:
+    def test_pipeline_run_success_first_pass(
+            self, mock_orchestrator: OrchestratorPipeline) -> None:
         """Should complete the pipeline if variants pass on the first iteration."""
         from ads_ai.agents.models import StrategyBrief, AudienceSegments, Persona, MessageStrategy, PreReleaseTargets, KPI
 
@@ -76,37 +77,68 @@ class TestOrchestratorPipeline:
             product_name="TestProduct",
             ad_intent="Brand awareness",
             intent_explanation="Test",
-            kpis=[KPI(name="CTR", target_value="1%", measurement_method="Impressions")],
+            kpis=[
+                KPI(name="CTR",
+                    target_value="1%",
+                    measurement_method="Impressions")
+            ],
             pre_release_targets=PreReleaseTargets(
-                clarity_score_target=80, brand_linkage_score_target=75,
-                hook_strength_threshold="High", message_retention_likelihood="80%",
+                clarity_score_target=80,
+                brand_linkage_score_target=75,
+                hook_strength_threshold="High",
+                message_retention_likelihood="80%",
                 simulated_intent_score="80",
             ),
-            audience_personas=[Persona(demographics="All", motivation="Value", pain_point="None", buying_trigger="Deal", likely_objection="Price")],
-            message_strategy=MessageStrategy(value_proposition="Best", message_pillars=["Quality"], tone="Professional", emotional_trigger="Trust"),
+            audience_personas=[
+                Persona(demographics="All",
+                        motivation="Value",
+                        pain_point="None",
+                        buying_trigger="Deal",
+                        likely_objection="Price")
+            ],
+            message_strategy=MessageStrategy(value_proposition="Best",
+                                             message_pillars=["Quality"],
+                                             tone="Professional",
+                                             emotional_trigger="Trust"),
             creative_constraints={},
             decision_thresholds={},
         )
         mock_orchestrator.strategy_agent.create_brief.return_value = mock_brief
         from ads_ai.agents.models import (
-            StrategyBrief, AudienceSegments, Persona, MessageStrategy,
-            PreReleaseTargets, KPI, CrossPersonaInsights,
+            StrategyBrief,
+            AudienceSegments,
+            Persona,
+            MessageStrategy,
+            PreReleaseTargets,
+            KPI,
+            CrossPersonaInsights,
         )
         cross_insights = CrossPersonaInsights(
-            common_strengths=[], common_failure_points=[],
-            highest_performing_persona="", lowest_performing_persona="",
+            common_strengths=[],
+            common_failure_points=[],
+            highest_performing_persona="",
+            lowest_performing_persona="",
         )
         mock_orchestrator.audience_agent.model_personas.return_value = AudienceSegments(
-            personas=[], cross_persona_insights=cross_insights, optimization_recommendations=[]
-        )
+            personas=[],
+            cross_persona_insights=cross_insights,
+            optimization_recommendations=[])
         # 3. Creative
         mock_orchestrator.creative_agent.generate_variants.return_value = CreativeVariants(
-            variants=[AdScript(
-                concept_title="Test", core_idea="Idea", hook="H",
-                script_scenes=[Scene(description="D", visual_cues="V", dialogue_vo="D")],
-                brand_integration="Logo.", cta="Buy.", video_prompt="4k.", variant_name="V1",
-            )]
-        )
+            variants=[
+                AdScript(
+                    concept_title="Test",
+                    core_idea="Idea",
+                    hook="H",
+                    script_scenes=[
+                        Scene(description="D", visual_cues="V", dialogue_vo="D")
+                    ],
+                    brand_integration="Logo.",
+                    cta="Buy.",
+                    video_prompt="4k.",
+                    variant_name="V1",
+                )
+            ])
 
         # 5. Scoring & Decision - GO decision
         mock_report = MagicMock(spec=CompositeReadinessReport)
@@ -121,31 +153,36 @@ class TestOrchestratorPipeline:
 
         # 7-12 Post-approval
         mock_orchestrator.adaptation_agent.adapt.return_value = PlatformAdaptationReport(
-            variant_adaptations=[]
-        )
+            variant_adaptations=[])
         mock_orchestrator.compliance_agent.validate_compliance.return_value = ComplianceRiskReport(
-            variant_reports=[], overall_status="PASS"
-        )
+            variant_reports=[], overall_status="PASS")
         mock_orchestrator.production_agent.plan_production.return_value = AssetProductionReport(
-            production_variants=[AssetProductionVariant(
-                concept_title="Test",
-                required_assets=[],
-                production_scenes=[ShotSceneDesign(
-                    shot_number=1, visual_description="", audio_description="", technical_specs=""
-                )],
-                estimated_production_complexity="Low",
-            )]
-        )
+            production_variants=[
+                AssetProductionVariant(
+                    concept_title="Test",
+                    required_assets=[],
+                    production_scenes=[
+                        ShotSceneDesign(shot_number=1,
+                                        visual_description="",
+                                        audio_description="",
+                                        technical_specs="")
+                    ],
+                    estimated_production_complexity="Low",
+                )
+            ])
         mock_orchestrator.validation_agent.design_validation.return_value = ExternalValidationPlan(
-            experiment_designs=[], metric_mapping=[], variant_validation_results=[]
-        )
+            experiment_designs=[],
+            metric_mapping=[],
+            variant_validation_results=[])
         mock_orchestrator.deployment_agent.plan_deployment.return_value = DeploymentExperimentationReport(
-            launch_plans=[], test_timeline="", scaling_triggers=[]
-        )
+            launch_plans=[], test_timeline="", scaling_triggers=[])
         mock_orchestrator.learning_agent.capture_learnings.return_value = KnowledgeLearningReport(
-            campaign_records=[], prediction_reality_reports=[], key_patterns=[], agent_performance_diagnostics=[]
-        )
-        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(video_file_path="test.mp4")
+            campaign_records=[],
+            prediction_reality_reports=[],
+            key_patterns=[],
+            agent_performance_diagnostics=[])
+        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(
+            video_file_path="test.mp4")
 
         result = mock_orchestrator.run(
             product="Product",
@@ -157,41 +194,73 @@ class TestOrchestratorPipeline:
         assert mock_orchestrator.strategy_agent.create_brief.called
         assert mock_orchestrator.iteration_agent.manage_iteration.call_count == 0
 
-    def test_pipeline_iteration_limit(self, mock_orchestrator: OrchestratorPipeline) -> None:
+    def test_pipeline_iteration_limit(
+            self, mock_orchestrator: OrchestratorPipeline) -> None:
         """Should terminate after max iterations even if no variants pass."""
         from ads_ai.agents.models import (
-            StrategyBrief, AudienceSegments, Persona, MessageStrategy,
-            PreReleaseTargets, KPI, CrossPersonaInsights,
+            StrategyBrief,
+            AudienceSegments,
+            Persona,
+            MessageStrategy,
+            PreReleaseTargets,
+            KPI,
+            CrossPersonaInsights,
         )
         cross_insights = CrossPersonaInsights(
-            common_strengths=[], common_failure_points=[],
-            highest_performing_persona="", lowest_performing_persona="",
+            common_strengths=[],
+            common_failure_points=[],
+            highest_performing_persona="",
+            lowest_performing_persona="",
         )
         mock_orchestrator.strategy_agent.create_brief.return_value = StrategyBrief(
             product_name="TestProduct",
             ad_intent="Brand awareness",
             intent_explanation="Test",
-            kpis=[KPI(name="CTR", target_value="1%", measurement_method="Impressions")],
+            kpis=[
+                KPI(name="CTR",
+                    target_value="1%",
+                    measurement_method="Impressions")
+            ],
             pre_release_targets=PreReleaseTargets(
-                clarity_score_target=80, brand_linkage_score_target=75,
-                hook_strength_threshold="High", message_retention_likelihood="80%",
+                clarity_score_target=80,
+                brand_linkage_score_target=75,
+                hook_strength_threshold="High",
+                message_retention_likelihood="80%",
                 simulated_intent_score="80",
             ),
-            audience_personas=[Persona(demographics="All", motivation="Value", pain_point="None", buying_trigger="Deal", likely_objection="Price")],
-            message_strategy=MessageStrategy(value_proposition="Best", message_pillars=["Quality"], tone="Professional", emotional_trigger="Trust"),
+            audience_personas=[
+                Persona(demographics="All",
+                        motivation="Value",
+                        pain_point="None",
+                        buying_trigger="Deal",
+                        likely_objection="Price")
+            ],
+            message_strategy=MessageStrategy(value_proposition="Best",
+                                             message_pillars=["Quality"],
+                                             tone="Professional",
+                                             emotional_trigger="Trust"),
             creative_constraints={},
             decision_thresholds={},
         )
         mock_orchestrator.audience_agent.model_personas.return_value = AudienceSegments(
-            personas=[], cross_persona_insights=cross_insights, optimization_recommendations=[]
-        )
+            personas=[],
+            cross_persona_insights=cross_insights,
+            optimization_recommendations=[])
         mock_orchestrator.creative_agent.generate_variants.return_value = CreativeVariants(
-            variants=[AdScript(
-                concept_title="Test", core_idea="Idea", hook="H",
-                script_scenes=[Scene(description="D", visual_cues="V", dialogue_vo="D")],
-                brand_integration="Logo.", cta="Buy.", video_prompt="4k.", variant_name="V1",
-            )]
-        )
+            variants=[
+                AdScript(
+                    concept_title="Test",
+                    core_idea="Idea",
+                    hook="H",
+                    script_scenes=[
+                        Scene(description="D", visual_cues="V", dialogue_vo="D")
+                    ],
+                    brand_integration="Logo.",
+                    cta="Buy.",
+                    video_prompt="4k.",
+                    variant_name="V1",
+                )
+            ])
 
         mock_report = MagicMock(spec=CompositeReadinessReport)
         mock_report.variant_decisions = [
@@ -210,46 +279,56 @@ class TestOrchestratorPipeline:
         )
         mock_orchestrator.creative_agent.refine_variants.return_value = [
             AdScript(
-                concept_title="Test", core_idea="Idea", hook="H",
-                script_scenes=[Scene(description="D", visual_cues="V", dialogue_vo="D")],
-                brand_integration="Logo.", cta="Buy.", video_prompt="4k.", variant_name="V1",
+                concept_title="Test",
+                core_idea="Idea",
+                hook="H",
+                script_scenes=[
+                    Scene(description="D", visual_cues="V", dialogue_vo="D")
+                ],
+                brand_integration="Logo.",
+                cta="Buy.",
+                video_prompt="4k.",
+                variant_name="V1",
             )
         ]
 
         # Post-approval stages (called after fallback selection)
         mock_orchestrator.adaptation_agent.adapt.return_value = PlatformAdaptationReport(
-            variant_adaptations=[]
-        )
+            variant_adaptations=[])
         mock_orchestrator.compliance_agent.validate_compliance.return_value = ComplianceRiskReport(
-            variant_reports=[], overall_status="PASS"
-        )
+            variant_reports=[], overall_status="PASS")
         mock_orchestrator.production_agent.plan_production.return_value = AssetProductionReport(
-            production_variants=[AssetProductionVariant(
-                concept_title="Test",
-                required_assets=[],
-                production_scenes=[ShotSceneDesign(
-                    shot_number=1, visual_description="", audio_description="", technical_specs=""
-                )],
-                estimated_production_complexity="Low",
-            )]
-        )
+            production_variants=[
+                AssetProductionVariant(
+                    concept_title="Test",
+                    required_assets=[],
+                    production_scenes=[
+                        ShotSceneDesign(shot_number=1,
+                                        visual_description="",
+                                        audio_description="",
+                                        technical_specs="")
+                    ],
+                    estimated_production_complexity="Low",
+                )
+            ])
         mock_orchestrator.validation_agent.design_validation.return_value = ExternalValidationPlan(
-            experiment_designs=[], metric_mapping=[], variant_validation_results=[]
-        )
+            experiment_designs=[],
+            metric_mapping=[],
+            variant_validation_results=[])
         mock_orchestrator.deployment_agent.plan_deployment.return_value = DeploymentExperimentationReport(
-            launch_plans=[], test_timeline="", scaling_triggers=[]
-        )
+            launch_plans=[], test_timeline="", scaling_triggers=[])
         mock_orchestrator.learning_agent.capture_learnings.return_value = KnowledgeLearningReport(
-            campaign_records=[], prediction_reality_reports=[], key_patterns=[], agent_performance_diagnostics=[]
-        )
-        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(video_file_path="test.mp4")
+            campaign_records=[],
+            prediction_reality_reports=[],
+            key_patterns=[],
+            agent_performance_diagnostics=[])
+        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(
+            video_file_path="test.mp4")
 
-        result = mock_orchestrator.run(
-            product="Product",
-            goal="Goal",
-            audience_desc="Audience",
-            max_iterations=2
-        )
+        result = mock_orchestrator.run(product="Product",
+                                       goal="Goal",
+                                       audience_desc="Audience",
+                                       max_iterations=2)
 
         assert result is not None
         # Should evaluate 3 times (Initial + 2 iterations)

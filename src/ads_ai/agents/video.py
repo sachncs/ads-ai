@@ -120,7 +120,8 @@ class VideoGenerationAgent(BaseAgent):
                 variant_name,
                 elapsed,
             )
-            raise VideoGenerationError(f"Prompt synthesis failed for {variant_name}: {e}") from e
+            raise VideoGenerationError(
+                f"Prompt synthesis failed for {variant_name}: {e}") from e
 
     def generate_video(
         self,
@@ -177,8 +178,7 @@ class VideoGenerationAgent(BaseAgent):
                     )
                     raise VideoGenerationError(
                         f"Video generation timed out after "
-                        f"{video_timeout_seconds}s for {variant_name}"
-                    )
+                        f"{video_timeout_seconds}s for {variant_name}")
                 logger.info(
                     "Waiting for video generation to complete (polling every 10s)...",
                 )
@@ -190,7 +190,8 @@ class VideoGenerationAgent(BaseAgent):
                     "Video generation failed or returned no videos concept=%s",
                     variant_name,
                 )
-                raise VideoGenerationError(f"No videos generated for {variant_name}")
+                raise VideoGenerationError(
+                    f"No videos generated for {variant_name}")
 
             video_result = video_operation.response.generated_videos[0]
 

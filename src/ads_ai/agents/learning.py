@@ -93,7 +93,8 @@ class KnowledgeLearningAgent(BaseAgent):
           products in the same category.
         - OUTPUT DISCIPLINE: Return results as a structured KnowledgeLearningReport JSON object.
         """
-            report = self.generate(prompt, response_schema=KnowledgeLearningReport)
+            report = self.generate(prompt,
+                                   response_schema=KnowledgeLearningReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "capture_learnings completed elapsed=%.3fs",

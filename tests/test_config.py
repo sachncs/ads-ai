@@ -16,13 +16,16 @@ class TestConfig:
 
     def test_settings_default_values(self) -> None:
         """Should have sensible defaults for model names and logs."""
-        settings = Settings(_env_file=None) # type: ignore
+        settings = Settings(_env_file=None)  # type: ignore
         assert settings.default_text_model == "gemini-3.1-pro-preview"
         assert settings.log_level == "INFO"
 
     def test_settings_env_override(self) -> None:
         """Should allow overriding via environment variables."""
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key", "LOG_LEVEL": "DEBUG"}):
+        with patch.dict(os.environ, {
+                "GEMINI_API_KEY": "test-key",
+                "LOG_LEVEL": "DEBUG"
+        }):
             settings = Settings()
             assert settings.gemini_api_key == "test-key"
             assert settings.log_level == "DEBUG"

@@ -6,11 +6,13 @@ import unittest
 from unittest.mock import MagicMock
 
 # Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from ads_ai.agents.video import VideoGenerationAgent
 from ads_ai.agents.creative import CreativeAgent
 from ads_ai.agents.models import AdScript, CreativeVariants
+
 
 class TestAgentLogicStandalone(unittest.TestCase):
     """Core logic tests for agents without pytest dependencies."""
@@ -39,19 +41,24 @@ class TestAgentLogicStandalone(unittest.TestCase):
     def test_creative_agent_variant_generation(self):
         """Verify CreativeAgent produces structured variants."""
         agent = CreativeAgent(self.mock_client)
-        mock_variant = AdScript(
-            concept_title="T", core_idea="I", hook="H",
-            script_scenes=[], brand_integration="B",
-            cta="C", video_prompt="V", variant_name="V"
-        )
+        mock_variant = AdScript(concept_title="T",
+                                core_idea="I",
+                                hook="H",
+                                script_scenes=[],
+                                brand_integration="B",
+                                cta="C",
+                                video_prompt="V",
+                                variant_name="V")
         mock_response = MagicMock()
-        mock_response.text = CreativeVariants(variants=[mock_variant]).model_dump_json()
+        mock_response.text = CreativeVariants(
+            variants=[mock_variant]).model_dump_json()
         self.mock_client.models.generate_content.return_value = mock_response
 
         # Just verify it doesn't crash on empty schemas
         result = agent.generate_variants("P", MagicMock(), MagicMock(), [])
         self.assertEqual(len(result.variants), 1)
         print("CreativeAgent variant generation: OK")
+
 
 if __name__ == "__main__":
     print("Running Standalone Agent Quality Tests...\n")

@@ -102,7 +102,8 @@ class ScoringAgent(BaseAgent):
         - DATA INTEGRITY: Use only provided agent scores. Do not inject external opinions.
         - OUTPUT DISCIPLINE: Return results as a structured CompositeReadinessReport JSON object.
         """
-            report = self.generate(prompt, response_schema=CompositeReadinessReport)
+            report = self.generate(prompt,
+                                   response_schema=CompositeReadinessReport)
             elapsed = time.perf_counter() - start
             logger.info(
                 "aggregate_and_score completed variant_count=%d elapsed=%.3fs",

@@ -31,7 +31,8 @@ def mock_client() -> MagicMock:
 class TestAgentQuality:
     """Tests evaluating agent outputs against quantified standards."""
 
-    def test_creative_agent_variant_quality(self, mock_client: MagicMock) -> None:
+    def test_creative_agent_variant_quality(self,
+                                            mock_client: MagicMock) -> None:
         """CreativeAgent must produce variants with hooks and multiple scenes."""
         # Setup mock inputs
         brief = MagicMock(spec=StrategyBrief)
@@ -46,28 +47,44 @@ class TestAgentQuality:
             core_idea="Test idea",
             hook="Short and punchy hook.",  # < 15 words
             script_scenes=[
-                {"description": "S1", "visual_cues": "C1", "dialogue_vo": "D1"},
-                {"description": "S2", "visual_cues": "C2", "dialogue_vo": "D2"},
-                {"description": "S3", "visual_cues": "C3", "dialogue_vo": "D3"},
+                {
+                    "description": "S1",
+                    "visual_cues": "C1",
+                    "dialogue_vo": "D1"
+                },
+                {
+                    "description": "S2",
+                    "visual_cues": "C2",
+                    "dialogue_vo": "D2"
+                },
+                {
+                    "description": "S3",
+                    "visual_cues": "C3",
+                    "dialogue_vo": "D3"
+                },
             ],
             brand_integration="Logo on screen.",
             cta="Buy now.",
             video_prompt="Cinematic 4k high-fidelity render...",
-            variant_name="V1"
-        )
+            variant_name="V1")
 
         mock_response = MagicMock()
-        mock_response.text = CreativeVariants(variants=[mock_variant]).model_dump_json()
+        mock_response.text = CreativeVariants(
+            variants=[mock_variant]).model_dump_json()
         mock_client.models.generate_content.return_value = mock_response
 
         result = agent.generate_variants("Prod", brief, personas, ["Meta"])
 
         # QUANTIFIED ASSERTIONS
-        assert len(result.variants[0].script_scenes) >= 3, "Variant must have >= 3 scenes."
-        assert len(result.variants[0].hook.split()) < 15, "Hook must be concise (< 15 words)."
-        assert "cinematic" in result.variants[0].video_prompt.lower(), "Video prompt must contain cinematic markers."
+        assert len(result.variants[0].script_scenes
+                  ) >= 3, "Variant must have >= 3 scenes."
+        assert len(result.variants[0].hook.split()
+                  ) < 15, "Hook must be concise (< 15 words)."
+        assert "cinematic" in result.variants[0].video_prompt.lower(
+        ), "Video prompt must contain cinematic markers."
 
-    def test_video_generation_prompt_synthesis_quality(self, mock_client: MagicMock) -> None:
+    def test_video_generation_prompt_synthesis_quality(
+            self, mock_client: MagicMock) -> None:
         """VideoGenerationAgent must synthesize detailed prompts with cinematic markers."""
         agent = VideoGenerationAgent(mock_client)
 
@@ -90,10 +107,13 @@ class TestAgentQuality:
         result_prompt = agent.synthesize_video_prompt(script, plan)
 
         # QUANTIFIED ASSERTIONS
-        assert len(result_prompt.split()) > 40, "Prompt should be descriptively long."
+        assert len(
+            result_prompt.split()) > 40, "Prompt should be descriptively long."
         markers = ["4k", "cinematic", "lighting", "shot", "camera"]
         found_markers = [m for m in markers if m in result_prompt.lower()]
-        assert len(found_markers) >= 3, f"Prompt should contain cinematic markers. Found: {found_markers}"
+        assert len(
+            found_markers
+        ) >= 3, f"Prompt should contain cinematic markers. Found: {found_markers}"
 
     def test_scoring_agent_ready_criteria(self, mock_client: MagicMock) -> None:
         """ScoringAgent should only flag 'Ready' if no critical defects exist."""
@@ -102,23 +122,20 @@ class TestAgentQuality:
         # Mock high-score report with NO critical defects
         mock_report = CompositeReadinessReport(
             target_kpis=["ROI"],
-            variant_decisions=[
-                {
-                    "concept_title": "V1",
-                    "final_readiness_score": 92.5,
-                    "is_ready": True,
-                    "status": "GO",
-                    "confidence": 0.9,
-                    "primary_strength": "Hook",
-                    "primary_blocker": None,
-                    "category_breakdown": []
-                }
-            ],
+            variant_decisions=[{
+                "concept_title": "V1",
+                "final_readiness_score": 92.5,
+                "is_ready": True,
+                "status": "GO",
+                "confidence": 0.9,
+                "primary_strength": "Hook",
+                "primary_blocker": None,
+                "category_breakdown": []
+            }],
             best_overall_variant="V1",
             system_readiness_flag=True,
             strategic_trade_offs=[],
-            critical_risks=[]
-        )
+            critical_risks=[])
 
         mock_response = MagicMock()
         mock_response.text = mock_report.model_dump_json()
@@ -140,15 +157,19 @@ class TestAgentQuality:
         mock_report = BrandLinkageEvaluation(
             brand_attribution_summary="Logo is prominent in scene 1 and 3.",
             brand_linkage_score=90,
-            sub_scores={"attribution_clarity": 95, "timing": 85, "integration": 90, "memorability": 90},
+            sub_scores={
+                "attribution_clarity": 95,
+                "timing": 85,
+                "integration": 90,
+                "memorability": 90
+            },
             persona_recalls=[],
             confusion_risk="Low",
             confusion_explanation="Clear logo placement.",
             distinctiveness_score=85,
             alignment_score=90,
             issues_identified=[],
-            recommended_fixes=[]
-        )
+            recommended_fixes=[])
         mock_response = MagicMock()
         mock_response.text = mock_report.model_dump_json()
         mock_client.models.generate_content.return_value = mock_response
@@ -168,15 +189,19 @@ class TestAgentQuality:
         mock_report = ClarityEvaluation(
             core_message="Buy our product.",
             message_consistency="High",
-            clarity_score=65, # Below target
-            sub_scores={"comprehensibility": 70, "cognitive_load": 60, "explicitness": 65, "signal_vs_noise": 65},
+            clarity_score=65,  # Below target
+            sub_scores={
+                "comprehensibility": 70,
+                "cognitive_load": 60,
+                "explicitness": 65,
+                "signal_vs_noise": 65
+            },
             persona_comprehensions=[],
             retention_likelihood=60,
             retention_justification="Vague CTA.",
             time_to_clarity="5s",
             issues_identified=["Vague call to action."],
-            recommended_fixes=["Change CTA to 'Shop Now' for clarity."]
-        )
+            recommended_fixes=["Change CTA to 'Shop Now' for clarity."])
         mock_response = MagicMock()
         mock_response.text = mock_report.model_dump_json()
         mock_client.models.generate_content.return_value = mock_response
@@ -185,5 +210,6 @@ class TestAgentQuality:
 
         # QUANTIFIED ASSERTIONS
         if result.clarity_score < 70:
-            assert len(result.recommended_fixes) > 0, "Fixes must be provided for sub-par scores."
+            assert len(result.recommended_fixes
+                      ) > 0, "Fixes must be provided for sub-par scores."
             assert "cta" in result.recommended_fixes[0].lower()
