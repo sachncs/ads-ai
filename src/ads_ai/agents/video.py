@@ -4,14 +4,26 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import cast
 
-from google import genai
+from google import genai  # type: ignore[attr-defined]
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, AssetProductionVariant, VideoGenerationResult
+from ads_ai.agents.models import (
+    AdScript,
+    AssetProductionVariant,
+    VideoGenerationResult,
+)
 from ads_ai.config import settings
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_VIDEO_TIMEOUT_SECONDS = 300
+"""Maximum seconds to wait for video generation to complete."""
+
+
+class VideoGenerationError(Exception):
+    """Raised when video generation fails unrecoverably."""
 
 
 class VideoGenerationAgent(BaseAgent):
@@ -27,25 +39,41 @@ class VideoGenerationAgent(BaseAgent):
 
         Args:
             client: The Google GenAI client.
+
+        Attributes:
+            video_model: The Veo model identifier used for video generation
+                (defaults to ``settings.default_video_model``).
         """
         super().__init__(client, model_name=settings.default_text_model)
         self.video_model = settings.default_video_model
 
-    def _synthesize_video_prompt(
-        self, script: AdScript, production_plan: AssetProductionVariant
+    def synthesize_video_prompt(
+        self,
+        script: AdScript,
+        production_plan: AssetProductionVariant,
     ) -> str:
-        """Uses the LLM to synthesize a single highly descriptive Veo prompt.
+        """Synthesizes a descriptive Veo prompt from an ad script.
 
         Args:
             script: The final approved ad script.
-            production_plan: technical production design for visual flow.
+            production_plan: Technical production design for visual flow.
 
         Returns:
             A single, continuous text prompt string for the video model.
+
+        Raises:
+            VideoGenerationError: If prompt synthesis fails.
         """
-        prompt = f"""
+        variant_name = getattr(script, "concept_title", "?")
+        logger.info(
+            "synthesize_video_prompt started concept=%s",
+            variant_name,
+        )
+        call_start = time.perf_counter()
+        try:
+            video_prompt = f"""
         Role: Senior Video Director & AI Prompt Architect for Veo.
-        Objective: Synthezise a high-fidelity, technically precise visual prompt for a
+        Objective: Synthesize a high-fidelity, technically precise visual prompt for a
         text-to-video AI model (Veo) based on an advertising script and production design.
 
         INPUTS:
@@ -53,7 +81,7 @@ class VideoGenerationAgent(BaseAgent):
         - Technical Production Plan: {production_plan.model_dump_json()}
 
         EXECUTION STEPS:
-        1. VISUAL DNA DEFINTION: Establish the cinematic style (e.g., High-contrast,
+        1. VISUAL DNA DEFINITION: Establish the cinematic style (e.g., High-contrast,
            Soft-lighting, Macro-photography, Handheld-kinetic).
         2. SUBJECT & ACTION MAPPING: Describe the primary subjects and their EXACT motions
            as specified in the script.
@@ -74,19 +102,32 @@ class VideoGenerationAgent(BaseAgent):
           or "CTA" defined in the script.
         - OUTPUT DISCIPLINE: Return ONLY the raw prompt text.
         """
-        # Generate the prompt string without using a JSON schema
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            contents=prompt,
-        )
-        return response.text.strip()
+            api_response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=video_prompt,
+            )
+            elapsed = time.perf_counter() - call_start
+            logger.info(
+                "synthesize_video_prompt completed concept=%s elapsed=%.3fs",
+                variant_name,
+                elapsed,
+            )
+            return cast(str, api_response.text).strip()
+        except Exception as e:
+            elapsed = time.perf_counter() - call_start
+            logger.exception(
+                "synthesize_video_prompt failed concept=%s elapsed=%.3fs",
+                variant_name,
+                elapsed,
+            )
+            raise VideoGenerationError(f"Prompt synthesis failed for {variant_name}: {e}") from e
 
     def generate_video(
         self,
         script: AdScript,
         production_plan: AssetProductionVariant,
         output_path: str = "final_ad.mp4",
-    ) -> VideoGenerationResult | None:
+    ) -> VideoGenerationResult:
         """Generates the final video ad using Veo 3.1.
 
         Args:
@@ -95,48 +136,97 @@ class VideoGenerationAgent(BaseAgent):
             output_path: Target filesystem path for the .mp4 file.
 
         Returns:
-            A ``VideoGenerationResult`` if successful, otherwise ``None``.
+            A ``VideoGenerationResult`` with the path to the saved video file.
 
         Raises:
-            Exception: If prompt synthesis or video generation fails.
+            VideoGenerationError: If video generation fails unrecoverably.
         """
+        variant_name = getattr(script, "concept_title", "?")
         logger.info(
-            "Synthesizing Veo prompt for variant: %s...", script.variant_name)
+            "generate_video started concept=%s output=%s",
+            variant_name,
+            output_path,
+        )
+        call_start = time.perf_counter()
         try:
-            veo_prompt = self._synthesize_video_prompt(script, production_plan)
-            logger.info("Veo Prompt: %s", veo_prompt)
+            video_prompt = self.synthesize_video_prompt(script, production_plan)
+            logger.info(
+                "generate_video video_prompt_length=%d",
+                len(video_prompt),
+            )
 
             logger.info(
-                "Triggering video generation (veo-3.1-generate-preview)...")
-            operation = self.client.models.generate_videos(
+                "generate_video triggering model=%s",
+                self.video_model,
+            )
+            video_operation = self.client.models.generate_videos(
                 model=self.video_model,
-                prompt=veo_prompt,
+                prompt=video_prompt,
             )
 
             # Poll the operation status until the video is ready.
-            while not operation.done:
+            video_timeout_seconds = DEFAULT_VIDEO_TIMEOUT_SECONDS
+            polling_start = time.perf_counter()
+            while not video_operation.done:
+                elapsed = time.perf_counter() - polling_start
+                if elapsed >= video_timeout_seconds:
+                    logger.error(
+                        "Video generation timed out after %ds concept=%s",
+                        video_timeout_seconds,
+                        variant_name,
+                    )
+                    raise VideoGenerationError(
+                        f"Video generation timed out after "
+                        f"{video_timeout_seconds}s for {variant_name}"
+                    )
                 logger.info(
-                    "Waiting for video generation to complete (polling every 10s)..."
+                    "Waiting for video generation to complete (polling every 10s)...",
                 )
                 time.sleep(10)
-                operation = self.client.operations.get(operation)
+                video_operation = self.client.operations.get(video_operation)
 
-            # Download the generated video.
-            if not operation.response or not operation.response.generated_videos:
-                logger.error("Video generation failed or returned no videos.")
-                return None
+            if not video_operation.response or not video_operation.response.generated_videos:
+                logger.error(
+                    "Video generation failed or returned no videos concept=%s",
+                    variant_name,
+                )
+                raise VideoGenerationError(f"No videos generated for {variant_name}")
 
-            generated_video = operation.response.generated_videos[0]
+            video_result = video_operation.response.generated_videos[0]
 
             logger.info(
-                "Video generated successfully. Downloading to %s...", output_path
+                "generate_video downloading concept=%s output=%s",
+                variant_name,
+                output_path,
             )
-            self.client.files.download(file=generated_video.video)
-            generated_video.video.save(output_path)
-            logger.info("Video saved.")
+            self.client.files.download(file=video_result.video)
+            video_result.video.save(output_path)
 
+            elapsed = time.perf_counter() - call_start
+            logger.info(
+                "generate_video completed concept=%s output=%s elapsed=%.3fs",
+                variant_name,
+                output_path,
+                elapsed,
+            )
             return VideoGenerationResult(video_file_path=output_path)
 
+        except VideoGenerationError:
+            elapsed = time.perf_counter() - call_start
+            logger.exception(
+                "generate_video failed concept=%s elapsed=%.3fs",
+                variant_name,
+                elapsed,
+            )
+            raise
         except Exception as e:
-            logger.error("Error during video generation: %s", e)
-            return None
+            elapsed = time.perf_counter() - call_start
+            logger.exception(
+                "generate_video unexpected error concept=%s elapsed=%.3fs error=%s",
+                variant_name,
+                elapsed,
+                str(e)[:200],
+            )
+            raise VideoGenerationError(
+                f"Unexpected error generating video for {variant_name}: {e}"
+            ) from e

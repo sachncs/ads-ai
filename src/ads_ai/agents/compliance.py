@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import AdScript, ComplianceRiskReport, StrategyBrief
+
+logger = logging.getLogger(__name__)
 
 
 class ComplianceRiskAgent(BaseAgent):
@@ -25,13 +29,15 @@ class ComplianceRiskAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def validate_compliance(self,
-                            variants: list[AdScript],
-                            brief: StrategyBrief,
-                            platforms: list[str],
-                            brand_guidelines: str = "",
-                            geography_market: str = "",
-                            constraints: str = "") -> ComplianceRiskReport:
+    def validate_compliance(
+        self,
+        variants: list[AdScript],
+        brief: StrategyBrief,
+        platforms: list[str],
+        brand_guidelines: str = "",
+        geography_market: str = "",
+        constraints: str = "",
+    ) -> ComplianceRiskReport:
         """Evaluates AI-optimized ad variants using policy frameworks.
 
         Args:
@@ -46,17 +52,25 @@ class ComplianceRiskAgent(BaseAgent):
             A ``ComplianceRiskReport`` with risk classifications.
 
         Raises:
-            Exception: If compliance scanning or risk assessment fails.
+            google.api_core.exceptions.InternalServerError: If scanning fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "validate_compliance started variant_count=%d platforms=%s",
+            len(variants),
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Legal Counsel & Brand Safety Auditor.
         Objective: Conduct a rigorous compliance and policy audit of AI-generated ad
         variants to prevent legal liability, account bans, or brand damage.
 
         INPUTS:
-        - Ad Variants: {json.dumps(self._to_json_dict(variants))}
+        - Ad Variants: {json.dumps(self.to_json_dict(variants))}
         - Strategic Strategy: {brief.model_dump_json()}
-        - Distribution Platforms: {json.dumps(self._to_json_dict(platforms))}
+        - Distribution Platforms: {json.dumps(self.to_json_dict(platforms))}
         - Brand Guidelines: {brand_guidelines}
         - Target Geographies: {geography_market}
         - Additional Legal Constraints: {constraints}
@@ -85,4 +99,19 @@ class ComplianceRiskAgent(BaseAgent):
           Intelligence as a "Hallucinated Claim."
         - OUTPUT DISCIPLINE: Return results as a structured ComplianceRiskReport JSON object.
         """
-        return self.generate(prompt, response_schema=ComplianceRiskReport)
+            report = self.generate(prompt, response_schema=ComplianceRiskReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "validate_compliance completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "validate_compliance failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

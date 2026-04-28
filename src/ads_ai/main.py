@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import time
 
 from google import genai
 
@@ -27,14 +28,14 @@ logger = logging.getLogger(__name__)
 EXIT_CODE_MISSING_KEY = 1
 """Exit code when the Gemini API key is not configured."""
 
-EXIT_CODE_MISSING_ARGS = 1
+EXIT_CODE_MISSING_ARGS = 2
 """Exit code when required CLI arguments are absent."""
 
-EXIT_CODE_PIPELINE_FAILURE = 1
+EXIT_CODE_PIPELINE_FAILURE = 3
 """Exit code when the pipeline raises an unrecoverable error."""
 
 
-def _build_argument_parser() -> argparse.ArgumentParser:
+def build_argument_parser() -> argparse.ArgumentParser:
     """Constructs the CLI argument parser.
 
     Returns:
@@ -96,8 +97,12 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _validate_environment() -> None:
-    """Exits early if the Gemini API key is missing."""
+def validate_environment() -> None:
+    """Exits if the Gemini API key is missing.
+
+    Raises:
+        SystemExit: With ``EXIT_CODE_MISSING_KEY`` if the API key is not set.
+    """
     if not settings.gemini_api_key:
         logger.error("GEMINI_API_KEY is not set in the environment.")
         sys.exit(EXIT_CODE_MISSING_KEY)
@@ -105,14 +110,15 @@ def _validate_environment() -> None:
 
 def main() -> None:
     """Parses arguments and dispatches the appropriate pipeline mode."""
-    parser = _build_argument_parser()
+    parser = build_argument_parser()
     args = parser.parse_args()
 
-    _validate_environment()
+    validate_environment()
 
     client = genai.Client(api_key=settings.gemini_api_key)
     orchestrator = OrchestratorPipeline(client)
 
+    run_start = time.perf_counter()
     try:
         if args.url:
             logger.info("Executing URL-driven pipeline mode.")
@@ -132,8 +138,11 @@ def main() -> None:
 
             logger.info("Executing explicit-input pipeline mode.")
 
-            # Combine explicit brand assets with product description if provided
-            brand_context = f"Brand Colors: {args.brand_colors}. Brand Images: {args.brand_images}" if args.brand_colors or args.brand_images else ""
+            brand_context = ""
+            if args.brand_colors or args.brand_images:
+                brand_context = (
+                    f"Brand Colors: {args.brand_colors}. Brand Images: {args.brand_images}"
+                )
 
             orchestrator.run(
                 product=args.product,
@@ -144,10 +153,19 @@ def main() -> None:
                 brand_assets=brand_context,
                 output_dir=args.output_dir,
             )
-        logger.info("Pipeline complete.")
+        elapsed = time.perf_counter() - run_start
+        logger.info("Pipeline complete. total_elapsed=%.3fs", elapsed)
+
+    except KeyboardInterrupt:
+        logger.warning("Pipeline interrupted by user.")
+        sys.exit(128 + 2)  # 130 = 128 + SIGINT(2)
 
     except Exception:
-        logger.exception("Pipeline failed with an unrecoverable error.")
+        elapsed = time.perf_counter() - run_start
+        logger.exception(
+            "Pipeline failed with an unrecoverable error. total_elapsed=%.3fs",
+            elapsed,
+        )
         sys.exit(EXIT_CODE_PIPELINE_FAILURE)
 
 

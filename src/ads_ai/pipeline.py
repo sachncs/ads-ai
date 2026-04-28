@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from google import genai
 from pydantic import BaseModel
@@ -19,23 +21,28 @@ from pydantic import BaseModel
 from ads_ai.agents import (
     AdScript,
     AssetProductionAgent,
+    AssetProductionReport,
+    AttentionHeuristicAgent,
     AudienceAgent,
     AudienceSegments,
-    AttentionHeuristicAgent,
     BrandLinkageAgent,
     BudgetInferenceAgent,
     BudgetInferenceReport,
     ComplianceRiskAgent,
+    ComplianceRiskReport,
     CompositeReadinessReport,
     CreativeAgent,
     DeploymentExperimentationAgent,
+    DeploymentExperimentationReport,
     DiagnosticsAgent,
-    ExtractedInputs,
     ExternalValidationAgent,
+    ExternalValidationPlan,
+    ExtractedInputs,
     IntentSimulationAgent,
     IterationControllerAgent,
     IterationControlReport,
     KnowledgeLearningAgent,
+    KnowledgeLearningReport,
     MessageClarityAgent,
     PlatformAdaptationAgent,
     PlatformVariant,
@@ -46,7 +53,6 @@ from ads_ai.agents import (
     VideoGenerationAgent,
     VideoGenerationResult,
 )
-from ads_ai.config import settings
 from ads_ai.utils.file_ops import ensure_output_dir, save_json
 
 logger = logging.getLogger(__name__)
@@ -95,6 +101,8 @@ class PipelineResult(BaseModel):
         deployment_report: Deployment and experimentation plan.
         learning_report: Knowledge and learning capture output.
         budget_inference_report: Optional budget inference if auto-derived.
+        video_results: List of video generation results.
+        video_paths: List of output video file paths.
     """
 
     strategy: StrategyBrief
@@ -103,12 +111,12 @@ class PipelineResult(BaseModel):
     readiness_report: CompositeReadinessReport
     iteration_history: list[IterationControlReport]
     platform_adaptations: list[PlatformVariant]
-    compliance_report: Any  # These remain Any as they are from dynamic imports or placeholders
-    production_report: Any
-    validation_plan: Any
-    deployment_report: Any
-    learning_report: Any
-    budget_inference_report: Optional[BudgetInferenceReport] = None
+    compliance_report: ComplianceRiskReport
+    production_report: AssetProductionReport
+    validation_plan: ExternalValidationPlan
+    deployment_report: DeploymentExperimentationReport
+    learning_report: KnowledgeLearningReport
+    budget_inference_report: BudgetInferenceReport | None = None
     video_results: list[VideoGenerationResult] = []
     video_paths: list[str] = []
 
@@ -189,8 +197,20 @@ class OrchestratorPipeline:
         Returns:
             A ``PipelineResult`` on success, or ``None`` if no variants pass.
         """
+        pipeline_start = time.perf_counter()
+        logger.info(
+            "run_from_url started url=%s goal=%s",
+            url,
+            goal,
+        )
+        step_start = time.perf_counter()
         logger.info("STEP 0 -> URL INTELLIGENCE (Extracting from URL)")
         extracted = self.url_agent.parse_url(url)
+        logger.info(
+            "STEP 0 completed url=%s elapsed=%.3fs",
+            url,
+            time.perf_counter() - step_start,
+        )
 
         product = (
             f"{extracted.brand_name}: {extracted.product_description}\n"
@@ -201,7 +221,7 @@ class OrchestratorPipeline:
             f"Segments: {', '.join(extracted.inferred_segments)}"
         )
 
-        inferred_budget_report = self._maybe_infer_budget(
+        inferred_budget_report = self.maybe_infer_budget(
             budget, goal, product, extracted, platforms
         )
         if inferred_budget_report is not None:
@@ -236,6 +256,11 @@ class OrchestratorPipeline:
         if result is not None and inferred_budget_report is not None:
             result.budget_inference_report = inferred_budget_report
 
+        logger.info(
+            "run_from_url completed url=%s total_elapsed=%.3fs",
+            url,
+            time.perf_counter() - pipeline_start,
+        )
         return result
 
     def run(
@@ -280,42 +305,79 @@ class OrchestratorPipeline:
         Returns:
             A ``PipelineResult`` on success, or ``None`` if no variants pass.
         """
+        pipeline_start = time.perf_counter()
         if platforms is None:
             platforms = []
 
-        # Create output directory for this run
         run_output_path = ensure_output_dir(output_dir or "outputs")
-        logger.info("Initializing run artifacts in %s", run_output_path)
+        logger.info(
+            "run started product=%s goal=%s output=%s",
+            product[:50],
+            goal,
+            run_output_path,
+        )
 
         # STEP 1 -> STRATEGY
+        step_start = time.perf_counter()
         logger.info("STEP 1 -> STRATEGY DEFINITION")
         brief = self.strategy_agent.create_brief(
-            product, goal, audience_desc, platforms, budget, timeline,
-            brand_assets, key_differentiators, competitors, constraints,
+            product,
+            goal,
+            audience_desc,
+            platforms,
+            budget,
+            timeline,
+            brand_assets,
+            key_differentiators,
+            competitors,
+            constraints,
             geography_market,
         )
         save_json(brief, run_output_path / "step_1_strategy.json")
+        logger.info(
+            "STEP 1 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
 
         # STEP 2 -> AUDIENCE
+        step_start = time.perf_counter()
         logger.info("STEP 2 -> AUDIENCE MODELING")
         personas = self.audience_agent.model_personas(
-            product, brief, audience_desc, platforms,
+            product,
+            brief,
+            audience_desc,
+            platforms,
         )
         save_json(personas, run_output_path / "step_2_audience.json")
+        logger.info(
+            "STEP 2 completed persona_count=%d elapsed=%.3fs",
+            len(personas.personas),
+            time.perf_counter() - step_start,
+        )
 
         # STEP 3 -> CREATIVE GENERATION
+        step_start = time.perf_counter()
         logger.info("STEP 3 -> CREATIVE GENERATION")
         creative_output = self.creative_agent.generate_variants(
-            product, brief, personas, platforms, constraints,
+            product,
+            brief,
+            personas,
+            platforms,
+            constraints,
         )
         save_json(creative_output, run_output_path / "step_3_creative_base.json")
+        logger.info(
+            "STEP 3 completed variant_count=%d elapsed=%.3fs",
+            len(creative_output.variants),
+            time.perf_counter() - step_start,
+        )
 
         current_variants = creative_output.variants
         iteration_reports: list[IterationControlReport] = []
         all_evaluations: list[dict[str, Any]] = []
 
         # STEPS 4-6 -> EVALUATE, AGGREGATE, ITERATE
-        readiness_report = self._run_evaluation_loop(
+        readiness_report = self.run_evaluation_loop(
             current_variants=current_variants,
             brief=brief,
             personas=personas,
@@ -326,6 +388,7 @@ class OrchestratorPipeline:
             all_evaluations_out=all_evaluations,
             output_dir=run_output_path,
         )
+
         # Filter to approved variants
         approved_variants = [
             current_variants[i]
@@ -334,24 +397,28 @@ class OrchestratorPipeline:
         ]
 
         if not approved_variants:
-            logger.warning("No variants met the 'GO' threshold. Falling back to the highest scoring variant for production.")
-            # Pick the one with the highest readiness score from the report
+            logger.warning(
+                "No variants met the 'GO' threshold. "
+                "Falling back to the highest scoring variant for production."
+            )
             best_decision = max(
                 readiness_report.variant_decisions,
-                key=lambda x: x.final_readiness_score
+                key=lambda x: x.final_readiness_score,
             )
-            # Find the actual variant object by title
             for v in current_variants:
                 if v.concept_title == best_decision.concept_title:
                     approved_variants = [v]
                     break
 
             if not approved_variants:
-                logger.error("Critical failure: Could not find best variant object.")
+                logger.error(
+                    "Critical failure: Could not find best variant object. total_elapsed=%.3fs",
+                    time.perf_counter() - pipeline_start,
+                )
                 return None
 
         # STEPS 7-12 -> POST-APPROVAL LINEAR STAGES
-        return self._run_post_approval_stages(
+        result = self.run_post_approval_stages(
             approved_variants=approved_variants,
             brief=brief,
             personas=personas,
@@ -369,11 +436,18 @@ class OrchestratorPipeline:
             output_dir=run_output_path,
         )
 
+        logger.info(
+            "run completed product=%s total_elapsed=%.3fs",
+            product[:50],
+            time.perf_counter() - pipeline_start,
+        )
+        return result
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _maybe_infer_budget(
+    def maybe_infer_budget(
         self,
         budget: str,
         goal: str,
@@ -397,8 +471,9 @@ class OrchestratorPipeline:
         if budget != DEFAULT_BUDGET_PLACEHOLDER:
             return None
 
+        step_start = time.perf_counter()
         logger.info("STEP 0.5 -> BUDGET INFERENCE")
-        return self.budget_agent.infer_budget(
+        report = self.budget_agent.infer_budget(
             goal=goal,
             product=product,
             funnel_type=extracted.funnel_type,
@@ -406,8 +481,13 @@ class OrchestratorPipeline:
             platforms=platforms or [],
             market_context=extracted.competitive_category,
         )
+        logger.info(
+            "STEP 0.5 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
+        return report
 
-    def _evaluate_single_variant(
+    def evaluate_single_variant(
         self,
         index: int,
         variant: AdScript,
@@ -433,11 +513,8 @@ class OrchestratorPipeline:
         label = variant.concept_title or f"V{index + 1}"
         logger.info("  Evaluating variant: %s", label)
 
-        # Parallelize the 4 evaluation agents
         with ThreadPoolExecutor(max_workers=4) as executor:
-            future_clarity = executor.submit(
-                self.clarity_agent.evaluate, variant, brief, personas
-            )
+            future_clarity = executor.submit(self.clarity_agent.evaluate, variant, brief, personas)
             future_brand = executor.submit(
                 self.brand_agent.evaluate, variant, brief, brand_assets, personas
             )
@@ -445,8 +522,6 @@ class OrchestratorPipeline:
                 self.diagnostics_agent.evaluate, variant, brief, personas, constraints
             )
             future_attention = executor.submit(
-                # Attention depends on diagnostics output in some versions,
-                # but here they are independent logic blocks.
                 self.attention_agent.evaluate, variant, None, personas
             )
 
@@ -463,7 +538,7 @@ class OrchestratorPipeline:
             "attention": attention,
         }
 
-    def _run_evaluation_loop(
+    def run_evaluation_loop(
         self,
         current_variants: list[AdScript],
         brief: StrategyBrief,
@@ -496,26 +571,33 @@ class OrchestratorPipeline:
             The final ``CompositeReadinessReport``.
         """
         readiness_report: CompositeReadinessReport | None = None
+        evaluations: list[dict[str, Any]] = []
 
         for cycle in range(max_iterations + 1):
             logger.info("--- Iteration Cycle %d ---", cycle)
-
-            # SAVE CURRENT STATE Snapshot
             save_json(
-                {"cycle": cycle, "variants": [v.model_dump() for v in current_variants]},
-                output_dir / f"iteration_{cycle}_variants.json"
+                {
+                    "cycle": cycle,
+                    "variants": [v.model_dump() for v in current_variants],
+                },
+                output_dir / f"iteration_{cycle}_variants.json",
             )
 
             # STEP 4 -> PARALLEL EVALUATION
+            step_start = time.perf_counter()
             logger.info("STEP 4 -> PARALLEL EVALUATION")
             worker_count = min(MAX_PARALLEL_EVALUATIONS, len(current_variants))
-            evaluations: list[dict[str, Any]] = []
 
             with ThreadPoolExecutor(max_workers=worker_count) as executor:
                 futures = [
                     executor.submit(
-                        self._evaluate_single_variant,
-                        i, variant, brief, personas, brand_assets, constraints,
+                        self.evaluate_single_variant,
+                        i,
+                        variant,
+                        brief,
+                        personas,
+                        brand_assets,
+                        constraints,
                     )
                     for i, variant in enumerate(current_variants)
                 ]
@@ -523,39 +605,70 @@ class OrchestratorPipeline:
                     evaluations.append(future.result())
 
             evaluations.sort(key=lambda e: e["variant_index"])
+            logger.info(
+                "STEP 4 completed variant_count=%d elapsed=%.3fs",
+                len(current_variants),
+                time.perf_counter() - step_start,
+            )
 
+            # Intent evaluation
+            step_start = time.perf_counter()
+            logger.info("STEP 4b -> INTENT SIMULATION")
             intent_evaluation = self.intent_agent.evaluate(
-                current_variants, brief, personas, evaluations,
+                current_variants,
+                brief,
+                personas,
+                evaluations,
+            )
+            logger.info(
+                "STEP 4b completed elapsed=%.3fs",
+                time.perf_counter() - step_start,
             )
 
             # STEP 5 -> AGGREGATION & DECISION
+            step_start = time.perf_counter()
             logger.info("STEP 5 -> AGGREGATION & DECISION")
             readiness_report = self.scoring_agent.aggregate_and_score(
-                current_variants, brief, evaluations, intent_evaluation,
+                current_variants,
+                brief,
+                evaluations,
+                intent_evaluation,
+            )
+            logger.info(
+                "STEP 5 completed elapsed=%.3fs",
+                time.perf_counter() - step_start,
             )
 
-            all_converged = all(
-                d.status == "GO"
-                for d in readiness_report.variant_decisions
-            )
+            all_converged = all(d.status == "GO" for d in readiness_report.variant_decisions)
 
             if all_converged:
-                logger.info("  All variants met thresholds (GO). Exiting loop.")
+                logger.info("All variants met thresholds (GO). Exiting loop.")
                 break
 
             if cycle == max_iterations:
-                logger.info("  Max iterations reached.")
+                logger.info("Max iterations reached.")
                 break
 
             # STEP 6 -> ITERATION
+            step_start = time.perf_counter()
             logger.info("STEP 6 -> ITERATION LOOP")
             iteration_report = self.iteration_agent.manage_iteration(
-                current_variants, brief, evaluations, readiness_report,
+                current_variants,
+                brief,
+                evaluations,
+                readiness_report,
             )
             iteration_reports.append(iteration_report)
+            logger.info(
+                "STEP 6 completed elapsed=%.3fs",
+                time.perf_counter() - step_start,
+            )
 
-            current_variants = self._apply_iteration_feedback(
-                current_variants, readiness_report, iteration_report, brief,
+            current_variants = self.apply_iteration_feedback(
+                current_variants,
+                readiness_report,
+                iteration_report,
+                brief,
             )
 
         # Expose the final evaluations upward.
@@ -564,7 +677,7 @@ class OrchestratorPipeline:
 
         return readiness_report
 
-    def _apply_iteration_feedback(
+    def apply_iteration_feedback(
         self,
         variants: list[AdScript],
         readiness_report: CompositeReadinessReport,
@@ -593,7 +706,8 @@ class OrchestratorPipeline:
 
             plan = next(
                 (
-                    p for p in iteration_report.variant_plans
+                    p
+                    for p in iteration_report.variant_plans
                     if p.concept_title == variant.concept_title
                 ),
                 None,
@@ -611,25 +725,29 @@ class OrchestratorPipeline:
 
             prompt = (
                 "Role: Surgical Creative Editor / Iteration Controller\n"
-                "Objective: Refine the ad variant while PRESERVING high-performing elements.\n"
+                "Objective: Refine the ad variant while PRESERVING "
+                "high-performing elements.\n"
                 f"Original Variant: {variant.model_dump_json()}\n"
                 f"Strategy Brief: {brief.model_dump_json()}\n"
                 f"Evaluation Feedback: {feedback}\n\n"
                 "INSTRUCTIONS:\n"
-                "1. IDENTIFY SUCCESSFUL ELEMENTS: Do not change parts of the script that "
+                "1. IDENTIFY SUCCESSFUL ELEMENTS: Do not change parts of the "
+                "script that\n"
                 "already align with the strategy and have zero feedback issues.\n"
-                "2. TARGETED MODIFICATION: Only modify scenes or copy explicitly mentioned "
-                "in the feedback.\n"
-                "3. SCHEMA COMPLIANCE: Return the improved script in the exact same AdScript schema.\n"
+                "2. TARGETED MODIFICATION: Only modify scenes or copy explicitly "
+                "mentioned in the feedback.\n"
+                "3. SCHEMA COMPLIANCE: Return the improved script in the exact "
+                "same AdScript schema.\n"
             )
             refined = self.creative_agent.generate(
-                prompt, response_schema=AdScript,
+                prompt,
+                response_schema=AdScript,
             )
             improved.append(refined)
 
         return improved
 
-    def _run_post_approval_stages(
+    def run_post_approval_stages(
         self,
         approved_variants: list[AdScript],
         brief: StrategyBrief,
@@ -665,40 +783,68 @@ class OrchestratorPipeline:
             historical_data: Prior campaign performance data.
             past_strategies: Previously generated strategy briefs.
             output_dir: Run artifact directory.
+
         Returns:
             A fully populated ``PipelineResult``.
         """
         # STEP 7 -> PLATFORM ADAPTATION
+        step_start = time.perf_counter()
         logger.info("STEP 7 -> PLATFORM ADAPTATION")
         all_adaptations: list[PlatformVariant] = []
         for variant in approved_variants:
             report = self.adaptation_agent.adapt(
-                variant, brief, personas, platforms,
+                variant,
+                brief,
+                personas,
+                platforms,
             )
             for va in report.variant_adaptations:
                 all_adaptations.extend(va.adaptations)
         save_json(all_adaptations, output_dir / "step_7_adaptations.json")
+        logger.info(
+            "STEP 7 completed adaptation_count=%d elapsed=%.3fs",
+            len(all_adaptations),
+            time.perf_counter() - step_start,
+        )
 
         # STEP 8 -> COMPLIANCE CHECK
+        step_start = time.perf_counter()
         logger.info("STEP 8 -> COMPLIANCE CHECK")
         compliance_report = self.compliance_agent.validate_compliance(
-            approved_variants, brief, platforms, brand_assets,
-            geography_market, constraints,
+            approved_variants,
+            brief,
+            platforms,
+            brand_assets,
+            geography_market,
+            constraints,
         )
         save_json(compliance_report, output_dir / "step_8_compliance.json")
+        logger.info(
+            "STEP 8 completed status=%s elapsed=%.3fs",
+            compliance_report.overall_status,
+            time.perf_counter() - step_start,
+        )
 
         # STEP 9 -> ASSET PRODUCTION
+        step_start = time.perf_counter()
         logger.info("STEP 9 -> ASSET PRODUCTION")
         production_report = self.production_agent.plan_production(
-            approved_variants, all_adaptations, constraints, brand_assets,
+            approved_variants,
+            all_adaptations,
+            constraints,
+            brand_assets,
         )
         save_json(production_report, output_dir / "step_9_production.json")
+        logger.info(
+            "STEP 9 completed variant_count=%d elapsed=%.3fs",
+            len(production_report.production_variants),
+            time.perf_counter() - step_start,
+        )
 
         # STEP 10 -> HUMAN / EXTERNAL VALIDATION
+        step_start = time.perf_counter()
         logger.info("STEP 10 -> HUMAN / EXTERNAL VALIDATION")
-        latest_iteration_report = (
-            iteration_reports[-1] if iteration_reports else None
-        )
+        latest_iteration_report = iteration_reports[-1] if iteration_reports else None
         if latest_iteration_report is None:
             latest_iteration_report = IterationControlReport(
                 variant_plans=[],
@@ -707,19 +853,36 @@ class OrchestratorPipeline:
             )
 
         validation_plan = self.validation_agent.design_validation(
-            approved_variants, brief, all_evaluations, latest_iteration_report,
+            approved_variants,
+            brief,
+            all_evaluations,
+            latest_iteration_report,
         )
         save_json(validation_plan, output_dir / "step_10_validation.json")
+        logger.info(
+            "STEP 10 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
 
         # STEP 11 -> DEPLOYMENT & EXPERIMENTATION
+        step_start = time.perf_counter()
         logger.info("STEP 11 -> DEPLOYMENT & EXPERIMENTATION")
         deployment_report = self.deployment_agent.plan_deployment(
-            approved_variants, brief, platforms, budget, timeline,
+            approved_variants,
+            brief,
+            platforms,
+            budget,
+            timeline,
             geography_market,
         )
         save_json(deployment_report, output_dir / "step_11_deployment.json")
+        logger.info(
+            "STEP 11 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
 
         # STEP 12 -> LEARNING & SYSTEM IMPROVEMENT
+        step_start = time.perf_counter()
         logger.info("STEP 12 -> LEARNING & SYSTEM IMPROVEMENT")
         learning_report = self.learning_agent.capture_learnings(
             historical_data,
@@ -728,25 +891,37 @@ class OrchestratorPipeline:
             past_strategies + [brief],
         )
         save_json(learning_report, output_dir / "step_12_learning.json")
+        logger.info(
+            "STEP 12 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
 
         # STEP 13 -> MULTI-VARIANT VIDEO GENERATION
+        step_start = time.perf_counter()
         logger.info("STEP 13 -> MULTI-VARIANT VIDEO GENERATION (Veo 3.1)")
         video_results: list[VideoGenerationResult] = []
         video_paths: list[str] = []
 
-        # Limit to top 3 variants to manage cost and time
         for i, variant in enumerate(approved_variants[:3]):
-            safe_product = re.sub(r'[^a-zA-Z0-9_\-]', '_', brief.product_name)[:20]
+            safe_product = re.sub(r"[^a-zA-Z0-9_\-]", "_", brief.product_name)[:20]
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             video_filename = f"ad_{safe_product}_{i}_{timestamp}.mp4"
             video_output_path = output_dir / video_filename
 
-            logger.info("  Generating video for variant %d: %s", i + 1, video_output_path)
+            logger.info(
+                "  Generating video for variant %d: %s",
+                i + 1,
+                video_output_path,
+            )
 
-            # Find the corresponding production plan
-            # (Assuming 1-to-1 mapping for simplicity in this implementation)
-            prod_plan = production_report.production_variants[i] if i < len(
-                production_report.production_variants) else production_report.production_variants[0]
+            prod_plan = (
+                production_report.production_variants[i]
+                if i
+                < len(
+                    production_report.production_variants,
+                )
+                else production_report.production_variants[0]
+            )
 
             result = self.video_agent.generate_video(
                 script=variant,
@@ -757,7 +932,15 @@ class OrchestratorPipeline:
             if result:
                 video_results.append(result)
                 video_paths.append(str(video_output_path.absolute()))
-                logger.info("  Video saved to %s", video_output_path)
+                logger.info(
+                    "  Video saved to %s",
+                    video_output_path,
+                )
+        logger.info(
+            "STEP 13 completed video_count=%d elapsed=%.3fs",
+            len(video_results),
+            time.perf_counter() - step_start,
+        )
 
         # Save Final Result Report
         pipeline_final_result = PipelineResult(
@@ -775,6 +958,9 @@ class OrchestratorPipeline:
             video_results=video_results,
             video_paths=video_paths,
         )
-        save_json(pipeline_final_result, output_dir / "pipeline_final_report.json")
+        save_json(
+            pipeline_final_result,
+            output_dir / "pipeline_final_report.json",
+        )
 
         return pipeline_final_result

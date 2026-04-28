@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import ExternalValidationPlan, KnowledgeLearningReport
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeLearningAgent(BaseAgent):
@@ -26,11 +30,13 @@ class KnowledgeLearningAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def capture_learnings(self,
-                         historical_data: list[str],
-                         validation_output: ExternalValidationPlan,
-                         ai_outputs: list[str],
-                         strategy_docs: list[str]) -> KnowledgeLearningReport:
+    def capture_learnings(
+        self,
+        historical_data: list[str],
+        validation_output: ExternalValidationPlan,
+        ai_outputs: list[str],
+        strategy_docs: list[str],
+    ) -> KnowledgeLearningReport:
         """Captures and synthesizes learnings from campaign data.
 
         Args:
@@ -43,19 +49,27 @@ class KnowledgeLearningAgent(BaseAgent):
             A ``KnowledgeLearningReport`` with strategic takeaways.
 
         Raises:
-            Exception: If pattern recognition or knowledge synthesis fails.
+            google.api_core.exceptions.InternalServerError: If synthesis fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "capture_learnings started historical_count=%d ai_output_count=%d",
+            len(historical_data),
+            len(ai_outputs),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Data Strategist & Machine Learning Insights Specialist.
         Objective: Rigorously analyze campaign performance data and agent logs to extract
         high-value, systematic insights that improve the pipeline's future decision-making
         and creative output.
 
         INPUTS:
-        - Campaign Performance Data (Historical): {json.dumps(self._to_json_dict(historical_data))}
-        - Pipeline Logs & Evaluations: {json.dumps(self._to_json_dict(ai_outputs))}
-        - Validation Plan: {json.dumps(self._to_json_dict(validation_output))}
-        - Strategy Documents: {json.dumps(self._to_json_dict(strategy_docs))}
+        - Campaign Performance Data (Historical): {json.dumps(self.to_json_dict(historical_data))}
+        - Pipeline Logs & Evaluations: {json.dumps(self.to_json_dict(ai_outputs))}
+        - Validation Plan: {json.dumps(self.to_json_dict(validation_output))}
+        - Strategy Documents: {json.dumps(self.to_json_dict(strategy_docs))}
 
         EXECUTION STEPS:
         1. PATTERN RECOGNITION: Identify statistically significant correlations between
@@ -79,4 +93,17 @@ class KnowledgeLearningAgent(BaseAgent):
           products in the same category.
         - OUTPUT DISCIPLINE: Return results as a structured KnowledgeLearningReport JSON object.
         """
-        return self.generate(prompt, response_schema=KnowledgeLearningReport)
+            report = self.generate(prompt, response_schema=KnowledgeLearningReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "capture_learnings completed elapsed=%.3fs",
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "capture_learnings failed elapsed=%.3fs",
+                elapsed,
+            )
+            raise

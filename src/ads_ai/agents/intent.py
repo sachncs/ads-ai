@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
+from typing import Any
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, IntentEvaluation
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    IntentEvaluation,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class IntentSimulationAgent(BaseAgent):
@@ -26,11 +36,13 @@ class IntentSimulationAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def evaluate(self,
-                 variants: list[AdScript],
-                 strategy: StrategyBrief,
-                 personas: AudienceSegments,
-                 evaluations: list[dict[str, Any]]) -> IntentEvaluation:
+    def evaluate(
+        self,
+        variants: list[AdScript],
+        strategy: StrategyBrief,
+        personas: AudienceSegments,
+        evaluations: list[dict[str, Any]],
+    ) -> IntentEvaluation:
         """Simulates how different personas will likely behave after exposure.
 
         Args:
@@ -43,15 +55,22 @@ class IntentSimulationAgent(BaseAgent):
             An ``IntentEvaluation`` instance with intent scores.
 
         Raises:
-            Exception: If intent simulation or behavioral analysis fails.
+            google.api_core.exceptions.InternalServerError: If simulation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "evaluate started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Consumer Psychologist & Behavioral Economist.
         Objective: Predict post-exposure behavioral intent by simulating the psychological
         processing of ad variants across diverse audience personas.
 
         INPUTS:
-        - Ad Variants: {json.dumps(self._to_json_dict(variants))}
+        - Ad Variants: {json.dumps(self.to_json_dict(variants))}
         - Strategic Brief: {strategy.model_dump_json()}
         - Audience Personas: {personas.model_dump_json()}
         - Agent Evaluations: {json.dumps(evaluations, default=str)}
@@ -83,4 +102,19 @@ class IntentSimulationAgent(BaseAgent):
           without a massive value-prop, conversion intent must be < 20%.
         - OUTPUT DISCIPLINE: Return results as a structured IntentEvaluation JSON object.
         """
-        return self.generate(prompt, response_schema=IntentEvaluation)
+            report = self.generate(prompt, response_schema=IntentEvaluation)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "evaluate completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "evaluate failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, overload
 
-from google import genai
+from google import genai  # type: ignore[attr-defined]
 from pydantic import BaseModel
 
 from ads_ai.config import settings
@@ -33,11 +33,14 @@ class BaseAgent:
             client: The Google GenAI client.
             model_name: Model identifier. Falls back to the configured
                 default when ``None``.
+
+        Raises:
+            ValueError: If the resolved model name is empty.
         """
         self.client = client
         self.model_name = model_name or settings.default_text_model
 
-    def _to_json_dict(self, obj: Any) -> Any:
+    def to_json_dict(self, obj: Any) -> Any:
         """Recursively converts Pydantic models/lists into JSON-serializable dicts.
 
         Args:
@@ -45,40 +48,58 @@ class BaseAgent:
                 a dictionary, or a primitive type.
 
         Returns:
-            A JSON-serializable representation of the object (dict, list, or
-            primitive).
+            A JSON-serializable dict, list, or primitive.
         """
         if hasattr(obj, "model_dump"):
             return obj.model_dump()
         if isinstance(obj, list):
-            return [self._to_json_dict(item) for item in obj]
+            return [self.to_json_dict(item) for item in obj]
         if isinstance(obj, dict):
-            return {k: self._to_json_dict(v) for k, v in obj.items()}
+            return {k: self.to_json_dict(v) for k, v in obj.items()}
         return obj
+
+    @overload
+    def generate(
+        self,
+        prompt: str,
+        response_schema: type[BaseModel],
+    ) -> BaseModel:
+        ...
+
+    @overload
+    def generate(
+        self,
+        prompt: str,
+        response_schema: None = None,
+    ) -> str:
+        ...
 
     def generate(
         self,
         prompt: str,
         response_schema: type[BaseModel] | None = None,
-    ) -> Any:
+    ) -> BaseModel | str:
         """Sends a prompt to the LLM and validates the response.
 
         Args:
             prompt: The text prompt to send.
             response_schema: A Pydantic model class used to parse and
-                validate the JSON response.
+                validate the JSON response. When provided, the return type
+                is the schema type; when ``None``, returns raw text.
 
         Returns:
             A validated instance of ``response_schema`` if provided,
             otherwise the raw response text string.
 
         Raises:
-            ValueError: If response parsing or validation fails.
-            Exception: On upstream API failures or connectivity issues.
+            ValueError: If JSON parsing or Pydantic validation fails.
+            Exception: Propagates from the upstream API on non-503 errors.
         """
-        config: dict[str, Any] = {"response_mime_type": "application/json"}
+        llm_config: dict[str, Any] = {"response_mime_type": "application/json"}
+        response_schema_name: str | None = None
         if response_schema:
-            schema_dict = response_schema.model_json_schema()
+            response_schema_dict = response_schema.model_json_schema()
+            response_schema_name = response_schema.__name__
 
             def _clean_schema(d: dict[str, Any]) -> None:
                 """Removes 'additionalProperties' from the JSON schema recursively.
@@ -96,37 +117,64 @@ class BaseAgent:
                             if isinstance(item, dict):
                                 _clean_schema(item)
 
-            _clean_schema(schema_dict)
-            config["response_schema"] = schema_dict
+            _clean_schema(response_schema_dict)
+            llm_config["response_schema"] = response_schema_dict
 
-        # Transient error retry logic (503 Service Unavailable)
         max_retries = settings.max_retries
-        retry_delay = settings.retry_delay
+        backoff_delay = settings.retry_delay
 
-        response_text = ""
-        for attempt in range(max_retries):
+        raw_response_text = ""
+        call_start = time.perf_counter()
+        for retry_attempt in range(max_retries):
             try:
-                response = self.client.models.generate_content(
+                logger.debug(
+                    "generate started agent=%s model=%s attempt=%d schema=%s",
+                    self.__class__.__name__,
+                    self.model_name,
+                    retry_attempt + 1,
+                    response_schema_name or "raw",
+                )
+                api_response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
-                    config=config,
+                    config=llm_config,
                 )
-                response_text = response.text
+                raw_response_text = api_response.text
                 break
             except Exception as e:
-                # Check for 503 in the error message or type
-                if "503" in str(e) and attempt < max_retries - 1:
+                error_message = str(e)
+                if "503" in error_message and retry_attempt < max_retries - 1:
                     logger.warning(
-                        "Gemini API 503 (attempt %d/%d). Retrying in %ds...",
-                        attempt + 1,
+                        "Gemini API 503 (attempt %d/%d). Retrying in %ds. "
+                        "agent=%s model=%s error=%s",
+                        retry_attempt + 1,
                         max_retries,
-                        retry_delay,
+                        backoff_delay,
+                        self.__class__.__name__,
+                        self.model_name,
+                        error_message[:100],
                     )
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                    time.sleep(backoff_delay)
+                    backoff_delay *= 2
                     continue
-                raise e
+                logger.exception(
+                    "generate failed agent=%s model=%s attempt=%d error=%s",
+                    self.__class__.__name__,
+                    self.model_name,
+                    retry_attempt + 1,
+                    error_message[:200],
+                )
+                raise
+
+        elapsed = time.perf_counter() - call_start
+        logger.debug(
+            "generate completed agent=%s model=%s schema=%s elapsed=%.3fs",
+            self.__class__.__name__,
+            self.model_name,
+            response_schema_name or "raw",
+            elapsed,
+        )
 
         if response_schema:
-            return response_schema.model_validate_json(response_text)
-        return response_text
+            return response_schema.model_validate_json(raw_response_text)
+        return raw_response_text

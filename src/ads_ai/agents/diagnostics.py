@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, AudienceSegments, DiagnosticsEvaluation, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    DiagnosticsEvaluation,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class DiagnosticsAgent(BaseAgent):
@@ -23,11 +33,13 @@ class DiagnosticsAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-flash-lite-preview")
 
-    def evaluate(self,
-                 script: AdScript,
-                 strategy: StrategyBrief,
-                 personas: AudienceSegments,
-                 platform_constraints: str = "") -> DiagnosticsEvaluation:
+    def evaluate(
+        self,
+        script: AdScript,
+        strategy: StrategyBrief,
+        personas: AudienceSegments,
+        platform_constraints: str = "",
+    ) -> DiagnosticsEvaluation:
         """Evaluates structural integrity and narrative effectiveness.
 
         Args:
@@ -40,9 +52,13 @@ class DiagnosticsAgent(BaseAgent):
             A ``DiagnosticsEvaluation`` instance with structural analysis.
 
         Raises:
-            Exception: If structural diagnostics or pacing analysis fails.
+            google.api_core.exceptions.InternalServerError: If diagnostics fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info("evaluate started concept=%s", script.concept_title)
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Film Editor & Narrative Architect.
         Objective: Conduct a technical teardown of an ad script to optimize its pacing,
         narrative flow, and viewer retention mechanics.
@@ -74,4 +90,19 @@ class DiagnosticsAgent(BaseAgent):
           density with minimum friction.
         - OUTPUT DISCIPLINE: Return results as a structured DiagnosticsEvaluation JSON object.
         """
-        return self.generate(prompt, response_schema=DiagnosticsEvaluation)
+            report = self.generate(prompt, response_schema=DiagnosticsEvaluation)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "evaluate completed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "evaluate failed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            raise

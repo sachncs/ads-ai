@@ -211,7 +211,8 @@ class PersonaProfile(BaseModel):
     name: str
     snapshot: str
     awareness_level: str = Field(
-        description="Unaware / Problem-aware / Solution-aware / Product-aware")
+        description="Unaware / Problem-aware / Solution-aware / Product-aware"
+    )
     motivation: str
     pain_point: str
     desired_outcome: str
@@ -277,7 +278,8 @@ class AdScript(BaseModel):
     cta: str
     video_prompt: str = Field(
         description="Detailed prompt for video generation models "
-        "like Veo based on the visual cues and core idea")
+        "like Veo based on the visual cues and core idea"
+    )
     variant_name: str
 
 
@@ -498,8 +500,7 @@ class FunnelDropOff(BaseModel):
     Specific to the conversion funnel, identifying friction points.
     """
 
-    point: str = Field(
-        description="After hook / Mid-content / Before CTA / At CTA")
+    point: str = Field(description="After hook / Mid-content / Before CTA / At CTA")
     reason: str
 
 
@@ -535,7 +536,8 @@ class IntentEvaluation(BaseModel):
     variant_intents: list[VariantIntent]
     variant_ranking: list[VariantRanking]
     persona_variant_fit_matrix: dict[str, dict[str, int]] = Field(
-        description="Persona Name -> {Variant Title -> Fit Score}")
+        description="Persona Name -> {Variant Title -> Fit Score}"
+    )
     key_risks: list[str]
     optimization_recommendations: list[str]
 

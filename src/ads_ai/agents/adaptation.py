@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, PlatformAdaptationReport
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    PlatformAdaptationReport,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class PlatformAdaptationAgent(BaseAgent):
@@ -26,11 +35,13 @@ class PlatformAdaptationAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def adapt(self,
-              variant: AdScript,
-              strategy: StrategyBrief,
-              personas: AudienceSegments,
-              platforms: list[str]) -> PlatformAdaptationReport:
+    def adapt(
+        self,
+        variant: AdScript,
+        strategy: StrategyBrief,
+        personas: AudienceSegments,
+        platforms: list[str],
+    ) -> PlatformAdaptationReport:
         """Adapts a single ad script for multiple platforms.
 
         Args:
@@ -43,9 +54,17 @@ class PlatformAdaptationAgent(BaseAgent):
             A ``PlatformAdaptationReport`` with adapted creative copy.
 
         Raises:
-            Exception: If platform adaptation or copy rewriting fails.
+            google.api_core.exceptions.InternalServerError: If adaptation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "adapt started concept=%s platforms=%s",
+            variant.concept_title,
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Performance Marketer & Platform Creative Specialist.
         Objective: Transform an approved ad script into high-performance, platform-native
         creative variants (Meta, TikTok, YouTube, LinkedIn) that respect technical
@@ -79,4 +98,20 @@ class PlatformAdaptationAgent(BaseAgent):
         - OUTPUT DISCIPLINE: Return results as a structured PlatformAdaptationReport
           JSON object.
         """
-        return self.generate(prompt, response_schema=PlatformAdaptationReport)
+            report = self.generate(prompt, response_schema=PlatformAdaptationReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "adapt completed concept=%s platform_count=%d elapsed=%.3fs",
+                variant.concept_title,
+                len(platforms),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "adapt failed concept=%s elapsed=%.3fs",
+                variant.concept_title,
+                elapsed,
+            )
+            raise

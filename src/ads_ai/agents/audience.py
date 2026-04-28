@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import AudienceSegments, StrategyBrief
+
+logger = logging.getLogger(__name__)
 
 
 class AudienceAgent(BaseAgent):
@@ -23,12 +28,14 @@ class AudienceAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def model_personas(self,
-                       product: str,
-                       strategy: StrategyBrief,
-                       target_audience: str,
-                       platforms: list[str],
-                       market_context: str = "") -> AudienceSegments:
+    def model_personas(
+        self,
+        product: str,
+        strategy: StrategyBrief,
+        target_audience: str,
+        platforms: list[str],
+        market_context: str = "",
+    ) -> AudienceSegments:
         """Transforms a high-level target audience into structured personas.
 
         Args:
@@ -42,9 +49,17 @@ class AudienceAgent(BaseAgent):
             An ``AudienceSegments`` instance containing detailed personas.
 
         Raises:
-            Exception: If the persona modeling or simulation fails.
+            google.api_core.exceptions.InternalServerError: If modeling fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "model_personas started target_audience=%s platforms=%s",
+            target_audience[:50],
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Behavioral Psychologist & Market Researcher.
         Objective: Synthesize product data into 3 high-fidelity audience personas based
         on deep psychological drivers and behavioral economics.
@@ -81,4 +96,19 @@ class AudienceAgent(BaseAgent):
           context-heavy descriptors.
         - OUTPUT DISCIPLINE: Return results as a structured AudienceSegments JSON object.
         """
-        return self.generate(prompt, response_schema=AudienceSegments)
+            report = self.generate(prompt, response_schema=AudienceSegments)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "model_personas completed target_audience=%s elapsed=%.3fs",
+                target_audience[:50],
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "model_personas failed target_audience=%s elapsed=%.3fs",
+                target_audience[:50],
+                elapsed,
+            )
+            raise

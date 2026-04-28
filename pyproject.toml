@@ -73,6 +73,17 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 asyncio_mode = "auto"
 
+[tool.coverage.run]
+source = ["src/ads_ai"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

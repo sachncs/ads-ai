@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, DeploymentExperimentationReport, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    DeploymentExperimentationReport,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class DeploymentExperimentationAgent(BaseAgent):
@@ -26,13 +34,15 @@ class DeploymentExperimentationAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def plan_deployment(self,
-                        variants: list[AdScript],
-                        brief: StrategyBrief,
-                        platforms: list[str],
-                        budget: str = "TBD",
-                        timeline: str = "TBD",
-                        geography_market: str = "") -> DeploymentExperimentationReport:
+    def plan_deployment(
+        self,
+        variants: list[AdScript],
+        brief: StrategyBrief,
+        platforms: list[str],
+        budget: str = "TBD",
+        timeline: str = "TBD",
+        geography_market: str = "",
+    ) -> DeploymentExperimentationReport:
         """Plans the launch of validated ad variants and defines experiments.
 
         Args:
@@ -47,17 +57,25 @@ class DeploymentExperimentationAgent(BaseAgent):
             A ``DeploymentExperimentationReport`` with tactical launch steps.
 
         Raises:
-            Exception: If deployment planning or scaling trigger calculation fails.
+            google.api_core.exceptions.InternalServerError: If planning fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "plan_deployment started variant_count=%d platforms=%s",
+            len(variants),
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Media Buyer & Experimentation Architect.
         Objective: Design a tactical deployment and A/B testing plan for validated ad variants
         to maximize ROAS and collect statistically significant performance data.
 
         INPUTS:
-        - Validated Ad Variants: {json.dumps(self._to_json_dict(variants))}
+        - Validated Ad Variants: {json.dumps(self.to_json_dict(variants))}
         - Strategic Strategy Brief: {brief.model_dump_json()}
-        - Target Platforms: {json.dumps(self._to_json_dict(platforms))}
+        - Target Platforms: {json.dumps(self.to_json_dict(platforms))}
         - Total Allocated Budget: {budget}
         - Campaign Timeline: {timeline}
         - Target Marketplace: {geography_market}
@@ -82,4 +100,19 @@ class DeploymentExperimentationAgent(BaseAgent):
         - OUTPUT DISCIPLINE: Return results as a structured DeploymentExperimentationReport
           JSON object.
         """
-        return self.generate(prompt, response_schema=DeploymentExperimentationReport)
+            report = self.generate(prompt, response_schema=DeploymentExperimentationReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "plan_deployment completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "plan_deployment failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

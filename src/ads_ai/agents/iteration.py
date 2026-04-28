@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
+from typing import Any
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, IterationControlReport
+from ads_ai.agents.models import (
+    AdScript,
+    CompositeReadinessReport,
+    IterationControlReport,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class IterationControllerAgent(BaseAgent):
@@ -26,11 +36,13 @@ class IterationControllerAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def manage_iteration(self,
-                         variants: list[AdScript],
-                         strategy: StrategyBrief,
-                         evaluations: list[dict[str, Any]],
-                         readiness_report: CompositeReadinessReport) -> IterationControlReport:
+    def manage_iteration(
+        self,
+        variants: list[AdScript],
+        strategy: StrategyBrief,
+        evaluations: list[dict[str, Any]],
+        readiness_report: CompositeReadinessReport,
+    ) -> IterationControlReport:
         """Generates specific refinement instructions for each variant.
 
         Args:
@@ -43,16 +55,23 @@ class IterationControllerAgent(BaseAgent):
             An ``IterationControlReport`` with refinement directives.
 
         Raises:
-            Exception: If iteration planning or directive generation fails.
+            google.api_core.exceptions.InternalServerError: If planning fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "manage_iteration started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Creative Strategist & Iteration Director.
         Objective: Analyze multi-agent evaluation feedback to generate laser-focused,
         actionable refinement directives that will maximize variant performance in the next
         generation cycle.
 
         INPUTS:
-        - Current Ad Variants: {json.dumps(self._to_json_dict(variants))}
+        - Current Ad Variants: {json.dumps(self.to_json_dict(variants))}
         - Strategic Brief: {strategy.model_dump_json()}
         - Comprehensive Evaluation Data: {json.dumps(evaluations, default=str)}
         - Readiness Scoring Report: {readiness_report.model_dump_json()}
@@ -77,4 +96,19 @@ class IterationControllerAgent(BaseAgent):
         - FEASIBILITY: Ensure every directive is technically executable by the Creative agent.
         - OUTPUT DISCIPLINE: Return results as a structured IterationControlReport JSON object.
         """
-        return self.generate(prompt, response_schema=IterationControlReport)
+            report = self.generate(prompt, response_schema=IterationControlReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "manage_iteration completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "manage_iteration failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

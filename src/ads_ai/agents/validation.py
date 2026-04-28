@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, ExternalValidationPlan, IterationControlReport, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    ExternalValidationPlan,
+    IterationControlReport,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ExternalValidationAgent(BaseAgent):
@@ -26,11 +35,13 @@ class ExternalValidationAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def design_validation(self,
-                         variants: list[AdScript],
-                         brief: StrategyBrief,
-                         evaluations: list[str],
-                         iteration_report: IterationControlReport) -> ExternalValidationPlan:
+    def design_validation(
+        self,
+        variants: list[AdScript],
+        brief: StrategyBrief,
+        evaluations: list[str],
+        iteration_report: IterationControlReport,
+    ) -> ExternalValidationPlan:
         """Designs the experimental validation plan.
 
         Args:
@@ -43,19 +54,26 @@ class ExternalValidationAgent(BaseAgent):
             An ``ExternalValidationPlan`` with experimental setup details.
 
         Raises:
-            Exception: If validation planning or metric mapping fails.
+            google.api_core.exceptions.InternalServerError: If planning fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "design_validation started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Lead Quality Assurance Engineer & Brand Safety Officer.
         Objective: Conduct an adversarial, final-stage validation of the ad campaign assets
         and strategy to ensure zero defects, zero hallucinations, and maximum strategic
         alignment before deployment.
 
         INPUTS:
-        - Campaign Strategy & Brief: {json.dumps(self._to_json_dict(brief))}
-        - Video Prompt & Production Plan: {json.dumps(self._to_json_dict(variants))}
-        - Media & Experiment Plan: {json.dumps(self._to_json_dict(iteration_report))}
-        - Pipeline Logs: {json.dumps(self._to_json_dict(evaluations))}
+        - Campaign Strategy & Brief: {json.dumps(self.to_json_dict(brief))}
+        - Video Prompt & Production Plan: {json.dumps(self.to_json_dict(variants))}
+        - Media & Experiment Plan: {json.dumps(self.to_json_dict(iteration_report))}
+        - Pipeline Logs: {json.dumps(self.to_json_dict(evaluations))}
 
         EXECUTION STEPS:
         1. ADVERSARIAL BRAND AUDIT: Identify any visual or narrative element that contradicts
@@ -80,4 +98,19 @@ class ExternalValidationAgent(BaseAgent):
         - GROUNDEDNESS: Base the audit ONLY on provided logs and inputs.
         - OUTPUT DISCIPLINE: Return results as a structured ExternalValidationReport JSON object.
         """
-        return self.generate(prompt, response_schema=ExternalValidationPlan)
+            report = self.generate(prompt, response_schema=ExternalValidationPlan)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "design_validation completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "design_validation failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

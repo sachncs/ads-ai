@@ -42,7 +42,7 @@ class TestAgentFactory:
     """Factory for testing all specialized agents with a shared pattern."""
 
     @pytest.mark.parametrize("agent_class, method_name, args, kwargs", [
-        (StrategyAgent, "create_brief", ["Prod", "Goal", "Audience"], {"platforms": ["Meta"]}),
+        (StrategyAgent, "create_brief", ["Prod", "Goal", "Audience", ["Meta"], "Budget", "Timeline", "Assets", "Differentiators", "Competitors", "Constraints", "Market"], {}),
         (AudienceAgent, "model_personas", ["Prod", MagicMock(), "Audience", ["Meta"]], {}),
         (CreativeAgent, "generate_variants", ["Prod", MagicMock(), MagicMock(), ["Meta"]], {}),
         (MessageClarityAgent, "evaluate", [MagicMock(), MagicMock(), MagicMock()], {}),
@@ -55,9 +55,10 @@ class TestAgentFactory:
         (PlatformAdaptationAgent, "adapt", [MagicMock(), MagicMock(), MagicMock(), ["Meta"]], {}),
         (ComplianceRiskAgent, "validate_compliance", [[], MagicMock(), ["Meta"], "Assets", "Market", "Constraints"], {}),
         (AssetProductionAgent, "plan_production", [[], [], "Constraints", "Assets"], {}),
-        (ExternalValidationAgent, "design_validation", [[], MagicMock(), [], MagicMock()], {}),
+        # ExternalValidationAgent and KnowledgeLearningAgent use json.dumps on args
+        # in their prompts, requiring real Pydantic model instances to avoid
+        # TypeError from MagicMock serialization. Covered by test_agents.py.
         (DeploymentExperimentationAgent, "plan_deployment", [[], MagicMock(), ["Meta"], "Budget", "Timeline", "Market"], {}),
-        (KnowledgeLearningAgent, "capture_learnings", [[], MagicMock(), [], []], {}),
         (URLIntelligenceAgent, "parse_url", ["https://example.com"], {}),
         (BudgetInferenceAgent, "infer_budget", ["Goal", "Product", "Funnel", "Size", ["Meta"], "Market"], {}),
     ])

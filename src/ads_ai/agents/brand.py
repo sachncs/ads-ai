@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, AudienceSegments, BrandLinkageEvaluation, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    BrandLinkageEvaluation,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BrandLinkageAgent(BaseAgent):
@@ -23,11 +33,13 @@ class BrandLinkageAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-flash-lite-preview")
 
-    def evaluate(self,
-                 script: AdScript,
-                 strategy: StrategyBrief,
-                 brand_guidelines: str,
-                 personas: AudienceSegments) -> BrandLinkageEvaluation:
+    def evaluate(
+        self,
+        script: AdScript,
+        strategy: StrategyBrief,
+        brand_guidelines: str,
+        personas: AudienceSegments,
+    ) -> BrandLinkageEvaluation:
         """Evaluates whether an ad is clearly associated with the brand.
 
         Args:
@@ -40,9 +52,13 @@ class BrandLinkageAgent(BaseAgent):
             A ``BrandLinkageEvaluation`` instance with recall metrics.
 
         Raises:
-            Exception: If brand linkage evaluation or simulation fails.
+            google.api_core.exceptions.InternalServerError: If evaluation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info("evaluate started concept=%s", script.concept_title)
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Brand Strategist & Identity Auditor.
         Objective: Rigorously evaluate the strength of brand linkage and attribution
         within an ad script to ensure the viewer correctly identifies the source and message.
@@ -76,4 +92,19 @@ class BrandLinkageAgent(BaseAgent):
           must be flagged as a "Risk."
         - OUTPUT DISCIPLINE: Return results as a structured BrandLinkageEvaluation JSON object.
         """
-        return self.generate(prompt, response_schema=BrandLinkageEvaluation)
+            report = self.generate(prompt, response_schema=BrandLinkageEvaluation)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "evaluate completed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "evaluate failed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            raise

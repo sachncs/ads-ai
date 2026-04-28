@@ -78,16 +78,16 @@ class TestAgentQuality:
 
         # Mock detailed cinematic prompt
         cinematic_prompt = (
-            "A high-fidelity 4k cinematic render of a product. "
-            "Atmospheric lighting with soft lens flares and macro-photography detail. "
+            "A high-fidelity 4k cinematic render of a product with stunning detail. "
+            "Atmospheric lighting with soft lens flares macro-photography and vivid color grading. "
             "The camera glides smoothly in a slow 360-degree orbit around the object, "
-            "capturing every photorealistic texture in seamless detail."
+            "capturing every photorealistic texture in seamless detail with dynamic depth of field."
         )
         mock_response = MagicMock()
         mock_response.text = cinematic_prompt
         mock_client.models.generate_content.return_value = mock_response
 
-        result_prompt = agent._synthesize_video_prompt(script, plan)
+        result_prompt = agent.synthesize_video_prompt(script, plan)
 
         # QUANTIFIED ASSERTIONS
         assert len(result_prompt.split()) > 40, "Prompt should be descriptively long."

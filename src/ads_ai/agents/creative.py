@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AudienceSegments, CreativeVariants, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    CreativeVariants,
+    IterationControlReport,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class CreativeAgent(BaseAgent):
@@ -23,12 +35,14 @@ class CreativeAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def generate_variants(self,
-                          product: str,
-                          strategy: StrategyBrief,
-                          personas: AudienceSegments,
-                          platforms: list[str],
-                          constraints: str = "") -> CreativeVariants:
+    def generate_variants(
+        self,
+        product: str,
+        strategy: StrategyBrief,
+        personas: AudienceSegments,
+        platforms: list[str],
+        constraints: str = "",
+    ) -> CreativeVariants:
         """Generates multiple ad concepts and scripts.
 
         Args:
@@ -42,9 +56,17 @@ class CreativeAgent(BaseAgent):
             A ``CreativeVariants`` instance containing multiple ad concepts.
 
         Raises:
-            Exception: If creative generation or variant synthesis fails.
+            google.api_core.exceptions.InternalServerError: If generation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "generate_variants started product=%s platforms=%s",
+            product[:50],
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Lead Creative Director & Narrative Architect.
         Objective: Produce high-impact, platform-native ad scripts and concepts that
         strictly adhere to the strategy and persona data.
@@ -81,11 +103,29 @@ class CreativeAgent(BaseAgent):
           critical failure.
         - OUTPUT DISCIPLINE: Return results as a structured CreativeVariants JSON object.
         """
-        return self.generate(prompt, response_schema=CreativeVariants)
+            report = self.generate(prompt, response_schema=CreativeVariants)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "generate_variants completed product=%s variant_count=%d elapsed=%.3fs",
+                product[:50],
+                len(report.variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "generate_variants failed product=%s elapsed=%.3fs",
+                product[:50],
+                elapsed,
+            )
+            raise
 
-    def refine_variants(self,
-                        variants: list[AdScript],
-                        iteration_report: IterationControlReport) -> list[AdScript]:
+    def refine_variants(
+        self,
+        variants: list[AdScript],
+        iteration_report: IterationControlReport,
+    ) -> list[AdScript]:
         """Refines existing ad variants based on iteration directives.
 
         Args:
@@ -96,9 +136,16 @@ class CreativeAgent(BaseAgent):
             A list of improved ``AdScript`` instances.
 
         Raises:
-            Exception: If variant refinement or script rewriting fails.
+            google.api_core.exceptions.InternalServerError: If refinement fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "refine_variants started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Elite Creative Editor & Narrative Optimizer.
         Objective: Surgically refine the provided ad scripts based on the specific,
         actionable directives in the 'Iteration Report.'
@@ -122,7 +169,22 @@ class CreativeAgent(BaseAgent):
         - COMPLETENESS: Return the full, updated scripts for ALL variants.
         - OUTPUT DISCIPLINE: Return results as a structured CreativeVariants JSON object.
         """
-        # We use CreativeVariants schema but return the list of AdScript items
-        result: CreativeVariants = self.generate(
-            prompt, response_schema=CreativeVariants)
-        return result.variants
+            report: CreativeVariants = self.generate(
+                prompt,
+                response_schema=CreativeVariants,
+            )
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "refine_variants completed variant_count=%d elapsed=%.3fs",
+                len(report.variants),
+                elapsed,
+            )
+            return report.variants
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "refine_variants failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

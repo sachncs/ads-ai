@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, AttentionEvaluation, AudienceSegments, DiagnosticsEvaluation
+from ads_ai.agents.models import (
+    AdScript,
+    AttentionEvaluation,
+    AudienceSegments,
+    DiagnosticsEvaluation,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class AttentionHeuristicAgent(BaseAgent):
@@ -24,11 +34,13 @@ class AttentionHeuristicAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-flash-lite-preview")
 
-    def evaluate(self,
-                 script: AdScript,
-                 diagnostics: DiagnosticsEvaluation | None,
-                 personas: AudienceSegments,
-                 platform_context: str = "short-form feed") -> AttentionEvaluation:
+    def evaluate(
+        self,
+        script: AdScript,
+        diagnostics: DiagnosticsEvaluation | None,
+        personas: AudienceSegments,
+        platform_context: str = "short-form feed",
+    ) -> AttentionEvaluation:
         """Estimates the likelihood that an ad will capture attention.
 
         Args:
@@ -41,10 +53,20 @@ class AttentionHeuristicAgent(BaseAgent):
             An ``AttentionEvaluation`` instance with heuristic scores.
 
         Raises:
-            Exception: If attention simulation or heuristic analysis fails.
+            google.api_core.exceptions.InternalServerError: If analysis fails.
+            ValueError: If response parsing fails.
         """
-        diag_json = diagnostics.model_dump_json() if diagnostics else "N/A (Independent Evaluation)"
-        prompt = f"""
+        logger.info(
+            "evaluate started concept=%s platform_context=%s",
+            script.concept_title,
+            platform_context,
+        )
+        start = time.perf_counter()
+        try:
+            diag_json = (
+                diagnostics.model_dump_json() if diagnostics else "N/A (Independent Evaluation)"
+            )
+            prompt = f"""
         Role: Senior Attention Architect & Media Psychologist.
         Objective: Use visual and narrative heuristics to predict an ad's ability to
         "Stop the Scroll" and maintain high viewer density on social feeds.
@@ -78,4 +100,19 @@ class AttentionHeuristicAgent(BaseAgent):
           result in a Scroll-Stop Probability < 30%.
         - OUTPUT DISCIPLINE: Return results as a structured AttentionEvaluation JSON object.
         """
-        return self.generate(prompt, response_schema=AttentionEvaluation)
+            report = self.generate(prompt, response_schema=AttentionEvaluation)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "evaluate completed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "evaluate failed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            raise

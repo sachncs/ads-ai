@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import BudgetInferenceReport, ExtractedInputs
+from ads_ai.agents.models import BudgetInferenceReport
+
+logger = logging.getLogger(__name__)
 
 
 class BudgetInferenceAgent(BaseAgent):
@@ -23,13 +28,15 @@ class BudgetInferenceAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def infer_budget(self,
-                     goal: str,
-                     product: str,
-                     funnel_type: str,
-                     audience_size: str,
-                     platforms: list[str],
-                     market_context: str = "") -> BudgetInferenceReport:
+    def infer_budget(
+        self,
+        goal: str,
+        product: str,
+        funnel_type: str,
+        audience_size: str,
+        platforms: list[str],
+        market_context: str = "",
+    ) -> BudgetInferenceReport:
         """Generates a budget inference report based on campaign goals.
 
         Args:
@@ -44,9 +51,13 @@ class BudgetInferenceAgent(BaseAgent):
             A ``BudgetInferenceReport`` instance.
 
         Raises:
-            Exception: If the inference calculation or generation fails.
+            google.api_core.exceptions.InternalServerError: If inference fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info("infer_budget started goal=%s platforms=%s", goal, platforms)
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Mathematical Media Planner & Platform Economist.
         Objective: Infer a realistic budget distribution and platform selection based on
         ad goals, market category, and competitive density.
@@ -55,7 +66,7 @@ class BudgetInferenceAgent(BaseAgent):
         - Campaign Goal: {goal}
         - Product/Brand Intelligence: {product}
         - Funnel Type: {funnel_type}
-        - Target Platforms: {', '.join(platforms)}
+        - Target Platforms: {", ".join(platforms)}
         - Market Context: {market_context if market_context else "Standard benchmarks."}
 
         EXECUTION STEPS:
@@ -76,4 +87,19 @@ class BudgetInferenceAgent(BaseAgent):
           platform rather than spreading thin.
         - OUTPUT DISCIPLINE: Return results as a structured BudgetInferenceReport JSON object.
         """
-        return self.generate(prompt, response_schema=BudgetInferenceReport)
+            report = self.generate(prompt, response_schema=BudgetInferenceReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "infer_budget completed goal=%s elapsed=%.3fs",
+                goal,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "infer_budget failed goal=%s elapsed=%.3fs",
+                goal,
+                elapsed,
+            )
+            raise

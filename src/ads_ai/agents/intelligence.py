@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import ExtractedInputs
+
+logger = logging.getLogger(__name__)
 
 
 class URLIntelligenceAgent(BaseAgent):
@@ -34,9 +39,13 @@ class URLIntelligenceAgent(BaseAgent):
             An ``ExtractedInputs`` instance containing the parsed data.
 
         Raises:
-            Exception: If the URL cannot be accessed or analysis fails.
+            google.api_core.exceptions.InternalServerError: If URL access fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info("parse_url started url=%s", url)
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Business Intelligence Analyst & Competitive Researcher.
         Objective: Conduct a technical extraction of product value propositions,
         competitive advantages, and market positioning from a provided URL.
@@ -62,4 +71,19 @@ class URLIntelligenceAgent(BaseAgent):
         - NO UNCERTAINTY: If a field cannot be inferred, state "Information not available."
         - OUTPUT DISCIPLINE: Return result as structured ExtractedInputs JSON object.
         """
-        return self.generate(prompt, response_schema=ExtractedInputs)
+            report = self.generate(prompt, response_schema=ExtractedInputs)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "parse_url completed url=%s elapsed=%.3fs",
+                url,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "parse_url failed url=%s elapsed=%.3fs",
+                url,
+                elapsed,
+            )
+            raise

@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
+from typing import Any
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, CompositeReadinessReport
+from ads_ai.agents.models import (
+    AdScript,
+    CompositeReadinessReport,
+    IntentEvaluation,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ScoringAgent(BaseAgent):
@@ -26,11 +36,13 @@ class ScoringAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def aggregate_and_score(self,
-                            variants: list[AdScript],
-                            strategy: StrategyBrief,
-                            evaluations: list[dict[str, Any]],
-                            intent_evaluation: IntentEvaluation) -> CompositeReadinessReport:
+    def aggregate_and_score(
+        self,
+        variants: list[AdScript],
+        strategy: StrategyBrief,
+        evaluations: list[dict[str, Any]],
+        intent_evaluation: IntentEvaluation,
+    ) -> CompositeReadinessReport:
         """Aggregates scores from all evaluation agents.
 
         Args:
@@ -43,15 +55,22 @@ class ScoringAgent(BaseAgent):
             A ``CompositeReadinessReport`` with final scores and decisions.
 
         Raises:
-            Exception: If score aggregation or readiness weighting fails.
+            google.api_core.exceptions.InternalServerError: If aggregation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "aggregate_and_score started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Lead Data Scientist & Strategic Readiness Officer.
         Objective: Synthesize multi-agent evaluation data into a single, high-fidelity
         Readiness Report that dictates the final GO/NO-GO decision for each ad variant.
 
         INPUTS:
-        - Ad Variants: {json.dumps(self._to_json_dict(variants))}
+        - Ad Variants: {json.dumps(self.to_json_dict(variants))}
         - Strategy Brief: {strategy.model_dump_json()}
         - Multi-Agent Evaluative Data: {json.dumps(evaluations, default=str)}
         - Behavioral Intent: {intent_evaluation.model_dump_json()}
@@ -83,4 +102,19 @@ class ScoringAgent(BaseAgent):
         - DATA INTEGRITY: Use only provided agent scores. Do not inject external opinions.
         - OUTPUT DISCIPLINE: Return results as a structured CompositeReadinessReport JSON object.
         """
-        return self.generate(prompt, response_schema=CompositeReadinessReport)
+            report = self.generate(prompt, response_schema=CompositeReadinessReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "aggregate_and_score completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "aggregate_and_score failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

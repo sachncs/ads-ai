@@ -123,8 +123,6 @@ class TestStep3Models:
             "video_prompt": "Cinematic 4k shot of an office.",
             "variant_name": "Variant A",
         }
-        # Fixed the typo in the dict key "brand_integration:"
-        data["brand_integration"] = data.pop("brand_integration: ")
         model = AdScript(**data)
         assert model.concept_title == "The Infinite Hook"
         assert len(model.script_scenes) == 1

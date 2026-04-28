@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import BudgetInferenceReport, ExtractedInputs, StrategyBrief
+from ads_ai.agents.models import StrategyBrief
+
+logger = logging.getLogger(__name__)
 
 
 class StrategyAgent(BaseAgent):
@@ -24,18 +29,20 @@ class StrategyAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def create_brief(self,
-                     product: str,
-                     goal: str,
-                     audience_desc: str,
-                     platforms: list[str],
-                     budget: str,
-                     timeline: str,
-                     brand_assets: str,
-                     key_differentiators: str,
-                     competitors: str,
-                     constraints: str,
-                     geography_market: str) -> StrategyBrief:
+    def create_brief(
+        self,
+        product: str,
+        goal: str,
+        audience_desc: str,
+        platforms: list[str],
+        budget: str,
+        timeline: str,
+        brand_assets: str,
+        key_differentiators: str,
+        competitors: str,
+        constraints: str,
+        geography_market: str,
+    ) -> StrategyBrief:
         """Synthesizes a structured StrategyBrief.
 
         Args:
@@ -55,9 +62,18 @@ class StrategyAgent(BaseAgent):
             A ``StrategyBrief`` instance.
 
         Raises:
-            Exception: If the strategy synthesis or generation fails.
+            google.api_core.exceptions.InternalServerError: If synthesis fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "create_brief started product=%s goal=%s platforms=%s",
+            product[:50],
+            goal,
+            platforms,
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Lead Growth Strategist & Brand Architect.
         Objective: Synthesize product intelligence and budget constraints into a
         multi-channel advertising strategy that maximizes conversion and brand equity.
@@ -66,7 +82,7 @@ class StrategyAgent(BaseAgent):
         - Product Brand/Name: {product}
         - Primary Campaign Goal: {goal}
         - Target Audience: {audience_desc}
-        - Platforms: {', '.join(platforms)}
+        - Platforms: {", ".join(platforms)}
         - Budget: {budget}
         - Timeline: {timeline}
         - Brand Assets: {brand_assets}
@@ -99,4 +115,19 @@ class StrategyAgent(BaseAgent):
         - NO DRIFT: Respect constraints and funnel types in the narrative.
         - OUTPUT DISCIPLINE: Return results as a structured StrategyBrief JSON object.
         """
-        return self.generate(prompt, response_schema=StrategyBrief)
+            report = self.generate(prompt, response_schema=StrategyBrief)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "create_brief completed product=%s elapsed=%.3fs",
+                product[:50],
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "create_brief failed product=%s elapsed=%.3fs",
+                product[:50],
+                elapsed,
+            )
+            raise

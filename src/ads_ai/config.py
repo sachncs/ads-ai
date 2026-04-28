@@ -4,14 +4,16 @@ Settings are resolved in the following priority order:
 1. Explicit environment variables.
 2. Values defined in a ``.env`` file at the project root.
 3. Hard-coded defaults in this module.
+
+Warning:
+    ``settings`` is instantiated eagerly at module import time. Ensure
+    ``load_dotenv()`` or equivalent is called before this module is first
+    imported if you rely on ``.env`` file values.
 """
 
 from __future__ import annotations
 
-import logging
-
-from pydantic_settings import BaseSettings
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -48,6 +50,9 @@ class Settings(BaseSettings):
         gemini_api_key: Google GenAI API key.  Required at runtime.
         default_text_model: Model identifier for generative tasks.
         default_evaluation_model: Model identifier for evaluation tasks.
+        default_video_model: Model identifier for video generation tasks.
+        max_retries: Maximum retry attempts for transient API failures.
+        retry_delay: Initial retry delay in seconds.
         log_level: Python logging level string.
     """
 

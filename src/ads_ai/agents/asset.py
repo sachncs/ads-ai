@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import AdScript, AssetProductionReport, PlatformVariant
+
+logger = logging.getLogger(__name__)
 
 
 class AssetProductionAgent(BaseAgent):
@@ -26,11 +30,13 @@ class AssetProductionAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
-    def plan_production(self,
-                        variants: list[AdScript],
-                        platform_variants: list[PlatformVariant],
-                        constraints: str = "",
-                        brand_guidelines: str = "") -> AssetProductionReport:
+    def plan_production(
+        self,
+        variants: list[AdScript],
+        platform_variants: list[PlatformVariant],
+        constraints: str = "",
+        brand_guidelines: str = "",
+    ) -> AssetProductionReport:
         """Converts approved ad scripts into production-ready asset plans.
 
         Args:
@@ -43,17 +49,24 @@ class AssetProductionAgent(BaseAgent):
             An ``AssetProductionReport`` with technical shot designs.
 
         Raises:
-            Exception: If production planning or asset mapping fails.
+            google.api_core.exceptions.InternalServerError: If planning fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info(
+            "plan_production started variant_count=%d",
+            len(variants),
+        )
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Creative Producer & Production Designer.
         Objective: Convert approved ad scripts into a technical "Production Blueprint"
         that specifies every asset, shot, and technical requirement needed to build the
         final creative.
 
         INPUTS:
-        - Final Approved Ad Scripts: {json.dumps(self._to_json_dict(variants))}
-        - Platform-Adapted Scripts: {json.dumps(self._to_json_dict(platform_variants))}
+        - Final Approved Ad Scripts: {json.dumps(self.to_json_dict(variants))}
+        - Platform-Adapted Scripts: {json.dumps(self.to_json_dict(platform_variants))}
         - Creative & Budget Constraints: {constraints}
         - Brand Visual Guidelines: {brand_guidelines}
 
@@ -79,4 +92,19 @@ class AssetProductionAgent(BaseAgent):
           from the strategy.
         - OUTPUT DISCIPLINE: Return results as a structured AssetProductionReport JSON object.
         """
-        return self.generate(prompt, response_schema=AssetProductionReport)
+            report = self.generate(prompt, response_schema=AssetProductionReport)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "plan_production completed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "plan_production failed variant_count=%d elapsed=%.3fs",
+                len(variants),
+                elapsed,
+            )
+            raise

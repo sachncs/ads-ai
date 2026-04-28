@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
-from ads_ai.agents.models import AdScript, AudienceSegments, ClarityEvaluation, StrategyBrief
+from ads_ai.agents.models import (
+    AdScript,
+    AudienceSegments,
+    ClarityEvaluation,
+    StrategyBrief,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class MessageClarityAgent(BaseAgent):
@@ -24,10 +34,12 @@ class MessageClarityAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-flash-lite-preview")
 
-    def evaluate(self,
-                 script: AdScript,
-                 strategy: StrategyBrief,
-                 personas: AudienceSegments) -> ClarityEvaluation:
+    def evaluate(
+        self,
+        script: AdScript,
+        strategy: StrategyBrief,
+        personas: AudienceSegments,
+    ) -> ClarityEvaluation:
         """Evaluates whether an ad communicates its message clearly.
 
         Args:
@@ -39,9 +51,13 @@ class MessageClarityAgent(BaseAgent):
             A ``ClarityEvaluation`` instance with scores and recommendations.
 
         Raises:
-            Exception: If clarity evaluation or simulation fails.
+            google.api_core.exceptions.InternalServerError: If evaluation fails.
+            ValueError: If response parsing fails.
         """
-        prompt = f"""
+        logger.info("evaluate started concept=%s", script.concept_title)
+        start = time.perf_counter()
+        try:
+            prompt = f"""
         Role: Senior Communications Consultant & Linguistic Auditor.
         Objective: Perform a rigorous audit of an ad script to ensure 100% message clarity
         and zero cognitive friction for the target audience.
@@ -74,4 +90,19 @@ class MessageClarityAgent(BaseAgent):
           Clarity Score must be below 60.
         - OUTPUT DISCIPLINE: Return results as a structured ClarityEvaluation JSON object.
         """
-        return self.generate(prompt, response_schema=ClarityEvaluation)
+            report = self.generate(prompt, response_schema=ClarityEvaluation)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "evaluate completed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            return report
+        except Exception:
+            elapsed = time.perf_counter() - start
+            logger.exception(
+                "evaluate failed concept=%s elapsed=%.3fs",
+                script.concept_title,
+                elapsed,
+            )
+            raise

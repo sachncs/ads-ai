@@ -31,7 +31,7 @@ class TestAgentLogicStandalone(unittest.TestCase):
         mock_response.text = "Cinematic 4k render with atmospheric lighting and macro detail."
         self.mock_client.models.generate_content.return_value = mock_response
 
-        prompt = agent._synthesize_video_prompt(script, plan)
+        prompt = agent.synthesize_video_prompt(script, plan)
         self.assertIn("cinematic", prompt.lower())
         self.assertIn("4k", prompt.lower())
         print("VideoGenerationAgent synthesis: OK")
