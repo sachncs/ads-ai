@@ -24,10 +24,10 @@ jobs:
           pip install -e .[lint]
 
       - name: Lint with ruff
-        run: ruff check src/ tests/
+        run: ruff check ads_ai/ tests/
 
       - name: Type check with mypy
-        run: mypy src/ tests/ --ignore-missing-imports
+        run: mypy ads_ai/ tests/ --ignore-missing-imports
 
   test:
     runs-on: ubuntu-latest
@@ -46,6 +46,4 @@ jobs:
           pip install -e .[test]
 
       - name: Run tests with coverage
-        env:
-          GEMINI_API_KEY: dummy_key_for_ci
-        run: pytest tests/ -v --cov=src/ads_ai --cov-report=term-missing --cov-fail-under=80
+        run: pytest tests/ -v --cov=ads_ai --cov-report=term-missing --cov-fail-under=80

@@ -74,7 +74,7 @@ class TestStageConfig:
 
     def test_config_with_condition(self):
         """Test stage config with condition."""
-        condition = lambda ctx: ctx.get("run_optional") is True
+        def condition(ctx): return ctx.get("run_optional") is True
         config = StageConfig(
             id="optional_stage",
             description="Optional stage",
