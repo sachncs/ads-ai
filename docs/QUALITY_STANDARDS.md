@@ -37,7 +37,7 @@ plus the production-grade code standards that apply across all modules.
   ``Exception``.
 
 ### 1.5 Linting
-- All code passes ``ruff check src/ads_ai/`` (zero errors).
+- All code passes ``ruff check ads_ai/`` (zero errors).
 - Ruff configuration enforces: F (pyflakes), I (isort), N (naming), W (warnings), UP
   (modernization), I (imports). The project targets Python 3.10+ and uses ``X | None``
   union syntax throughout.

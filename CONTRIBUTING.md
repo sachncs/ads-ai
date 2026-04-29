@@ -43,17 +43,17 @@ pytest
 
 Run with coverage:
 ```bash
-pytest --cov=src/ads_ai --cov-report=html
+pytest --cov=ads_ai --cov-report=html
 ```
 
 ## Linting & Type Checking
 
 ```bash
 # Lint with ruff
-ruff check src/ads_ai
+ruff check ads_ai
 
 # Type check with mypy
-mypy src/ads_ai
+mypy ads_ai
 ```
 
 ## Pre-commit Hooks

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ads-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "A production-grade, multi-agent AI advertising pipeline for end-to-end campaign generation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -63,17 +63,17 @@ Issues = "https://github.com/sachn-cs/ads-ai/issues"
 ads-ai = "ads_ai.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ads_ai"]
+packages = ["ads_ai"]
 
 [tool.hatch.version]
-path = "src/ads_ai/__init__.py"
+path = "ads_ai/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
 
 [tool.coverage.run]
-source = ["src/ads_ai"]
+source = ["ads_ai"]
 branch = true
 
 [tool.coverage.report]

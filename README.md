@@ -1,19 +1,17 @@
 # Ads.ai - Multi-Agent Advertising Intelligence Pipeline
 
-![Ads.ai Header](https://source.unsplash.com/1600x400/?technology,ai,advertising)
+Ads.ai is a production-grade, multi-agent AI framework for end-to-end advertising campaign generation. The system extracts intelligence from product URLs, synthesizes strategic briefs, generates creative variants, evaluates them against quantifiable quality thresholds, and produces video assets ready for deployment.
 
-Ads.ai is a state-of-the-art, multi-agent AI framework designed to automate the entire advertising lifecycle. From raw URL intelligence to cinematic video production using **Veo 3.1**, Ads.ai orchestrates a specialized workforce of 19 AI agents to deliver high-performance creative assets.
+## Key Features
 
-## 🚀 Key Features
+- **13-Step Automated Pipeline**: Programmatic evaluation gates ensure every ad variant meets brand, clarity, and intent thresholds before proceeding to production.
+- **19 Specialized Agents**: Domain-expert agents for strategy, audience modeling, creative generation, compliance validation, and asset production.
+- **Veo 3.1 Video Synthesis**: Direct integration with Google's Veo 3.1 model for generating high-fidelity video advertisements from structured scripts.
+- **Quantified Quality Enforcement**: Built-in [Quality Standards](docs/QUALITY_STANDARDS.md) that gate creative production based on measurable, AI-evaluated metrics.
 
-*   **13-Step Automated Gating**: Programmatic loops ensure every ad variant meets strict brand and clarity thresholds before proceeding.
-*   **19 Specialized Agents**: Domain-expert agents for Strategy, Audience, Creative, Compliance, and more.
-*   **Cinematic Video Synthesis**: Direct integration with **Veo 3.1** for generating high-fidelity video ads from structured scripts.
-*   **Quantified Quality Enforcement**: Built-in [Quality Standards](docs/QUALITY_STANDARDS.md) that gate creative production based on measurable metrics.
+## Technical Architecture
 
-## 🏗️ Technical Architecture
-
-Ads.ai uses a recursive orchestration pattern where a central `OrchestratorPipeline` manages the state and data flow between specialized agents.
+Ads.ai employs a recursive orchestration pattern where a central `OrchestratorPipeline` manages state and data flow between specialized agents through a strict 13-step workflow.
 
 ```mermaid
 graph TD
@@ -32,13 +30,15 @@ graph TD
     Video --> Output([Final Campaign Assets])
 ```
 
-## 🛠️ Getting Started
+## Getting Started
 
-### 1. Prerequisites
-*   Python 3.10+
-*   Google AI Studio API Key (for Gemini and Veo)
+### Prerequisites
 
-### 2. Installation
+- Python 3.10 or higher
+- Google AI Studio API key (for Gemini and Veo models)
+
+### Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/sachn-cs/ads-ai.git
@@ -48,17 +48,21 @@ cd ads-ai
 pip install -e .
 ```
 
-### 3. Environment Configuration
+### Environment Configuration
+
 Create a `.env` file from the provided example:
+
 ```bash
 cp .env.example .env
 ```
-Key variables:
-*   `GEMINI_API_KEY`: Your Google GenAI API key.
-*   `DEFAULT_TEXT_MODEL`: Default model for agent reasoning (default: `gemini-3.1-pro-preview`).
-*   `DEFAULT_VIDEO_MODEL`: Model for video generation (default: `veo-3.1-generate-preview`).
 
-## 🤖 The Agent Workforce
+Key environment variables:
+
+- `GEMINI_API_KEY`: Your Google GenAI API key.
+- `DEFAULT_TEXT_MODEL`: Default model for agent reasoning (default: `gemini-3.1-pro-preview`).
+- `DEFAULT_VIDEO_MODEL`: Model for video generation (default: `veo-3.1-generate-preview`).
+
+## Agent Workforce
 
 | Agent | Responsibility | Output |
 | :--- | :--- | :--- |
@@ -67,33 +71,37 @@ Key variables:
 | **CreativeAgent** | Narrative structure, hooks, and visual cue design. | `CreativeVariants` |
 | **ScoringAgent** | Multi-dimensional readiness gating (GO/NO-GO). | `CompositeReadinessReport` |
 | **VideoGenAgent** | Cinematic prompt synthesis and Veo rendering. | `VideoGenerationResult` |
-| *...and 14 more* | See [Agents Overview](src/ads_ai/agents/README.md) | |
+| *...and 14 more* | See [Agents Overview](ads_ai/agents/README.md) | |
 
-## 🧪 Quality & Testing
+## Quality and Testing
 
-Ads.ai maintains a rigorous test suite with > 90% code coverage, focusing on:
-*   **Pydantic Guardrails**: 40+ models validated for strict schema integrity.
-*   **Quantified Quality**: Tests that verify "Cinematic Markers" and "Hook Strength" in agent outputs.
-*   **Stand-alone Verification**: Bypass local environment issues using our standalone runner:
+Ads.ai maintains a rigorous test suite with high code coverage, focusing on:
+
+- **Pydantic Validation**: 40+ models enforce strict schema integrity across all agent inputs and outputs.
+- **Quantified Quality Metrics**: Tests verify "Cinematic Markers" and "Hook Strength" in agent outputs.
+- **Standalone Verification**: Run tests independently without external API dependencies:
     ```bash
     python3 tests/standalone_runner.py
     ```
 
 ### Running Tests
+
 ```bash
 # Install test dependencies
 pip install -e ".[test]"
 
 # Run the full suite with coverage
-pytest tests/ -v --cov=src/ads_ai --cov-report=term-missing
+pytest tests/ -v --cov=ads_ai --cov-report=term-missing
 ```
 
-### Linting & Type Checking
+### Linting and Type Checking
+
 ```bash
 pip install -e ".[lint]"
-ruff check src/ tests/
-mypy src/ --ignore-missing-imports
+ruff check ads_ai tests/
+mypy ads_ai --ignore-missing-imports
 ```
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

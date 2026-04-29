@@ -1,25 +1,36 @@
 #!/bin/bash
-# Cleanup script for ads-ai project
-# Removes cache directories and local testing outputs
+# Cleanup script - removes cache files, build artifacts, and generated outputs
 
 set -e
 
-echo "Cleaning up cache directories..."
+echo "Cleaning cache files and build artifacts..."
 
-# Remove common cache directories
-rm -rf .benchmarks
-rm -rf .mypy_cache
-rm -rf .pytest_cache
-rm -rf .ruff_cache
-
-# Remove __pycache__ directories recursively
+# Python cache
 find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete 2>/dev/null || true
+find . -type f -name "*.pyo" -delete 2>/dev/null || true
+find . -type f -name ".coverage" -delete 2>/dev/null || true
 
-# Remove .pyc files
-find . -name "*.pyc" -delete 2>/dev/null || true
-find . -name "*.pyo" -delete 2>/dev/null || true
+# Coverage reports
+find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "coverage.xml" -delete 2>/dev/null || true
 
-# Remove .coverage if present
-rm -rf .coverage 2>/dev/null || true
+# Build artifacts
+rm -rf build/ 2>/dev/null || true
+rm -rf dist/ 2>/dev/null || true
+rm -rf *.egg-info/ 2>/dev/null || true
+rm -rf .egg/ 2>/dev/null || true
+
+# IDE and editor files
+find . -type d -name ".idea" -exec rm -rf {} + 2>/dev/null || true
+find . -type d -name ".vscode" -exec rm -rf {} + 2>/dev/null || true
+
+# Generated outputs
+rm -rf outputs/ 2>/dev/null || true
+
+# ruff cache
+find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 
 echo "Cleanup complete."

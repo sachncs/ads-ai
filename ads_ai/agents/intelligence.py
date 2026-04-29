@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import ipaddress
 import logging
-import time
 from urllib.parse import urlparse
 
 from google import genai
 
 from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import ExtractedInputs
+from ads_ai.utils import agent_timing, build_url_intelligence_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,6 @@ class URLIntelligenceAgent(BaseAgent):
         try:
             addr = ipaddress.ip_address(hostname)
         except ValueError:
-            # hostname is not an IP address — acceptable
             return
 
         if addr.is_private or addr.is_loopback or addr.is_reserved:
@@ -88,47 +87,8 @@ class URLIntelligenceAgent(BaseAgent):
         """
         self._validate_url(url)
         logger.info("parse_url started url=%s", url)
-        start = time.perf_counter()
-        try:
-            prompt = f"""
-        Role: Senior Business Intelligence Analyst & Competitive Researcher.
-        Objective: Conduct a technical extraction of product value propositions,
-        competitive advantages, and market positioning from a provided URL.
-
-        INPUTS:
-        - Product URL: {url}
-
-        EXECUTION STEPS:
-        1. FEATURE-TO-BENEFIT MAPPING: Extract raw features and translate them into
-           quantifiable consumer benefits.
-        2. COMPETITIVE DIFFERENTIATION: Identify the "Only-ness" factor—what can this
-           product do that others cannot?
-        3. TARGET MARKET IDENTIFICATION: Infer the primary vertical and sub-sectors.
-        4. OBJECTION SCAN: Identify potential reasons for purchase friction (e.g., price,
-           complexity, trust).
-        5. SEMANTIC EXTRACTION: Capture 5 high-intent keywords and 3 "Emotional Hooks"
-           found in the source material.
-
-        CONSTRAINTS & RULES:
-        - ZERO-HALLUCINATION: Do NOT invent features. If a benefit isn't explicitly
-          supported by the text, flag it as "Inferred."
-        - PRECISION: Use exact numbers and data points (prices, speeds, stats) if present.
-        - NO UNCERTAINTY: If a field cannot be inferred, state "Information not available."
-        - OUTPUT DISCIPLINE: Return result as structured ExtractedInputs JSON object.
-        """
+        with agent_timing(logger, "parse_url", "url", url):
+            prompt = build_url_intelligence_prompt(url=url)
             report = self.generate(prompt, response_schema=ExtractedInputs)
-            elapsed = time.perf_counter() - start
-            logger.info(
-                "parse_url completed url=%s elapsed=%.3fs",
-                url,
-                elapsed,
-            )
-            return report
-        except Exception:
-            elapsed = time.perf_counter() - start
-            logger.exception(
-                "parse_url failed url=%s elapsed=%.3fs",
-                url,
-                elapsed,
-            )
-            raise
+
+        return report

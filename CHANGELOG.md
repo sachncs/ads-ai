@@ -7,22 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-29
+
 ### Added
-- Comprehensive test coverage raised to >90%.
-- Added `pytest-cov` to test dependencies with 80% minimum coverage gate in CI.
-- Added dedicated test suites for `main.py` CLI entry point and `VideoGenerationAgent`.
-- Added `ruff` linting and `mypy` type checking to CI workflow.
+- `PipelineStageRegistry`: Dynamic stage registry with declarative stage configurations,
+  dependency resolution, topological sorting, and parallel execution hints.
+- `StageConfig`: Configurable stages with dependencies, conditions, retry policies, and
+  per-stage timeout settings.
+- `PipelineStageRegistry.create_legacy()`: Class method factory for the existing 13-step
+  pipeline using the new dynamic stage system.
+- `RetryPolicy` model: Configurable retry with backoff, max attempts, and retryable
+  exception filtering.
+- `StageExecutionResult` and `StageStatus`: Structured output for pipeline execution.
+- `test_pipeline_stages.py`: Comprehensive test suite with 38 test cases for the new
+  pipeline stages module.
+
+### Enhanced
+- All agent prompts now include chain-of-thought reasoning traces for systematic problem-solving.
+- Few-shot examples added to StrategyAgent, CreativeAgent, AudienceAgent, ScoringAgent,
+  IterationControllerAgent, and URLIntelligenceAgent.
+- Output validation checklists added to agent prompts to reduce malformed outputs.
+- Brand safety guardrails added to CreativeAgent prompts.
+- Contextual weighting logic added to ScoringAgent based on strategy goal type.
 
 ### Changed
-- CI workflow triggers on `master` branch (was incorrectly set to `main`).
-- `BaseAgent.generate()` overloads now use a generic `TypeVar` for precise return types.
-- `save_json()` protocol simplified to accept `Any`, resolving Pydantic v2 compatibility issues.
-- `capture_learnings()` and `design_validation()` signatures relaxed to accept `list[Any]` for evaluations.
+- `OrchestratorPipeline` remains backward-compatible with existing code while the new
+  `PipelineStageRegistry` provides an alternative execution model.
+- `PipelineStageRegistry.create_legacy` is now a class method instead of standalone function.
+- All ruff linting issues fixed across the codebase.
+- Comprehensive test coverage raised to >90% (126 tests).
+- CI workflow triggers on `master` branch.
 
 ### Fixed
-- Fixed 64 `ruff` lint errors across the codebase.
-- Fixed 55 `mypy` type errors across 20 source files.
-- Removed obsolete `pytest-asyncio` and `asyncio_mode` configuration (no async tests present).
+- `BaseAgent.generate()` overloads now use a generic `TypeVar` for precise return types.
+- `save_json()` protocol simplified to accept `Any`, resolving Pydantic v2 compatibility issues.
+- `capture_learnings()` and `design_validation()` signatures relaxed to accept `list[Any]`.
 
 ## [0.1.1] - 2024-04-28
 

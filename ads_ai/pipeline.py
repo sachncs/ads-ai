@@ -738,6 +738,202 @@ class OrchestratorPipeline:
 
         return improved
 
+    # ------------------------------------------------------------------
+    # Pipeline step methods (7-12)
+    # ------------------------------------------------------------------
+
+    def _run_step_7_adaptation(
+        self,
+        approved_variants: list[AdScript],
+        brief: StrategyBrief,
+        personas: AudienceSegments,
+        platforms: list[str],
+        output_dir: Path,
+    ) -> list[PlatformVariant]:
+        """STEP 7: Platform Adaptation."""
+        step_start = time.perf_counter()
+        logger.info("STEP 7 -> PLATFORM ADAPTATION")
+        all_adaptations: list[PlatformVariant] = []
+        for variant in approved_variants:
+            report = self.adaptation_agent.adapt(
+                variant, brief, personas, platforms)
+            for va in report.variant_adaptations:
+                all_adaptations.extend(va.adaptations)
+        save_json(all_adaptations, output_dir / "step_7_adaptations.json")
+        logger.info(
+            "STEP 7 completed adaptation_count=%d elapsed=%.3fs",
+            len(all_adaptations),
+            time.perf_counter() - step_start,
+        )
+        return all_adaptations
+
+    def _run_step_8_compliance(
+        self,
+        approved_variants: list[AdScript],
+        brief: StrategyBrief,
+        platforms: list[str],
+        brand_assets: str,
+        geography_market: str,
+        constraints: str,
+        output_dir: Path,
+    ) -> ComplianceRiskReport:
+        """STEP 8: Compliance Check."""
+        step_start = time.perf_counter()
+        logger.info("STEP 8 -> COMPLIANCE CHECK")
+        report = self.compliance_agent.validate_compliance(
+            approved_variants, brief, platforms, brand_assets,
+            geography_market, constraints)
+        save_json(report, output_dir / "step_8_compliance.json")
+        logger.info(
+            "STEP 8 completed status=%s elapsed=%.3fs",
+            report.overall_status,
+            time.perf_counter() - step_start,
+        )
+        return report
+
+    def _run_step_9_production(
+        self,
+        approved_variants: list[AdScript],
+        all_adaptations: list[PlatformVariant],
+        constraints: str,
+        brand_assets: str,
+        output_dir: Path,
+    ) -> AssetProductionReport:
+        """STEP 9: Asset Production Planning."""
+        step_start = time.perf_counter()
+        logger.info("STEP 9 -> ASSET PRODUCTION")
+        report = self.production_agent.plan_production(
+            approved_variants, all_adaptations, constraints, brand_assets)
+        save_json(report, output_dir / "step_9_production.json")
+        logger.info(
+            "STEP 9 completed variant_count=%d elapsed=%.3fs",
+            len(report.production_variants),
+            time.perf_counter() - step_start,
+        )
+        return report
+
+    def _run_step_10_validation(
+        self,
+        approved_variants: list[AdScript],
+        brief: StrategyBrief,
+        all_evaluations: list[dict[str, Any]],
+        iteration_reports: list[IterationControlReport],
+        output_dir: Path,
+    ) -> ExternalValidationPlan:
+        """STEP 10: Human / External Validation Design."""
+        step_start = time.perf_counter()
+        logger.info("STEP 10 -> HUMAN / EXTERNAL VALIDATION")
+        latest = iteration_reports[-1] if iteration_reports else None
+        if latest is None:
+            latest = IterationControlReport(
+                variant_plans=[],
+                cycle_count=0,
+                global_refinement_strategy="Passed on first pass.",
+            )
+        plan = self.validation_agent.design_validation(
+            approved_variants, brief, all_evaluations, latest)
+        save_json(plan, output_dir / "step_10_validation.json")
+        logger.info(
+            "STEP 10 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
+        return plan
+
+    def _run_step_11_deployment(
+        self,
+        approved_variants: list[AdScript],
+        brief: StrategyBrief,
+        platforms: list[str],
+        budget: str,
+        timeline: str,
+        geography_market: str,
+        output_dir: Path,
+    ) -> DeploymentExperimentationReport:
+        """STEP 11: Deployment & Experimentation Planning."""
+        step_start = time.perf_counter()
+        logger.info("STEP 11 -> DEPLOYMENT & EXPERIMENTATION")
+        report = self.deployment_agent.plan_deployment(
+            approved_variants, brief, platforms, budget, timeline,
+            geography_market)
+        save_json(report, output_dir / "step_11_deployment.json")
+        logger.info(
+            "STEP 11 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
+        return report
+
+    def _run_step_12_learning(
+        self,
+        historical_data: list[dict[str, Any]],
+        validation_plan: ExternalValidationPlan,
+        all_evaluations: list[dict[str, Any]],
+        past_strategies: list[StrategyBrief],
+        brief: StrategyBrief,
+        output_dir: Path,
+    ) -> KnowledgeLearningReport:
+        """STEP 12: Learning & System Improvement."""
+        step_start = time.perf_counter()
+        logger.info("STEP 12 -> LEARNING & SYSTEM IMPROVEMENT")
+        report = self.learning_agent.capture_learnings(
+            historical_data, validation_plan, all_evaluations,
+            past_strategies + [brief])
+        save_json(report, output_dir / "step_12_learning.json")
+        logger.info(
+            "STEP 12 completed elapsed=%.3fs",
+            time.perf_counter() - step_start,
+        )
+        return report
+
+    def _run_step_13_video(
+        self,
+        approved_variants: list[AdScript],
+        brief: StrategyBrief,
+        production_report: AssetProductionReport,
+        output_dir: Path,
+    ) -> tuple[list[VideoGenerationResult], list[str]]:
+        """STEP 13: Multi-Variant Video Generation."""
+        step_start = time.perf_counter()
+        logger.info("STEP 13 -> MULTI-VARIANT VIDEO GENERATION (Veo 3.1)")
+        video_results: list[VideoGenerationResult] = []
+        video_paths: list[str] = []
+
+        for i, variant in enumerate(approved_variants[:3]):
+            safe_product = re.sub(r"[^a-zA-Z0-9_\-]", "_",
+                                  brief.product_name)[:20]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            video_filename = f"ad_{safe_product}_{i}_{timestamp}.mp4"
+            video_output_path = output_dir / video_filename
+
+            logger.info(
+                "  Generating video for variant %d: %s",
+                i + 1,
+                video_output_path,
+            )
+
+            prod_plan = (
+                production_report.production_variants[i]
+                if i < len(production_report.production_variants)
+                else production_report.production_variants[0]
+            )
+
+            result = self.video_agent.generate_video(
+                script=variant,
+                production_plan=prod_plan,
+                output_path=str(video_output_path),
+            )
+
+            if result:
+                video_results.append(result)
+                video_paths.append(str(video_output_path.absolute()))
+                logger.info("  Video saved to %s", video_output_path)
+
+        logger.info(
+            "STEP 13 completed video_count=%d elapsed=%.3fs",
+            len(video_results),
+            time.perf_counter() - step_start,
+        )
+        return video_results, video_paths
+
     def run_post_approval_stages(
         self,
         approved_variants: list[AdScript],
@@ -756,7 +952,7 @@ class OrchestratorPipeline:
         past_strategies: list[StrategyBrief],
         output_dir: Path,
     ) -> PipelineResult:
-        """Executes linear post-approval stages 7 through 12.
+        """Executes linear post-approval stages 7 through 13.
 
         Args:
             approved_variants: Variants that passed the GO gate.
@@ -778,160 +974,27 @@ class OrchestratorPipeline:
         Returns:
             A fully populated ``PipelineResult``.
         """
-        # STEP 7 -> PLATFORM ADAPTATION
-        step_start = time.perf_counter()
-        logger.info("STEP 7 -> PLATFORM ADAPTATION")
-        all_adaptations: list[PlatformVariant] = []
-        for variant in approved_variants:
-            report = self.adaptation_agent.adapt(
-                variant,
-                brief,
-                personas,
-                platforms,
-            )
-            for va in report.variant_adaptations:
-                all_adaptations.extend(va.adaptations)
-        save_json(all_adaptations, output_dir / "step_7_adaptations.json")
-        logger.info(
-            "STEP 7 completed adaptation_count=%d elapsed=%.3fs",
-            len(all_adaptations),
-            time.perf_counter() - step_start,
-        )
+        all_adaptations = self._run_step_7_adaptation(
+            approved_variants, brief, personas, platforms, output_dir)
+        compliance_report = self._run_step_8_compliance(
+            approved_variants, brief, platforms, brand_assets,
+            geography_market, constraints, output_dir)
+        production_report = self._run_step_9_production(
+            approved_variants, all_adaptations, constraints, brand_assets,
+            output_dir)
+        validation_plan = self._run_step_10_validation(
+            approved_variants, brief, all_evaluations, iteration_reports,
+            output_dir)
+        deployment_report = self._run_step_11_deployment(
+            approved_variants, brief, platforms, budget, timeline,
+            geography_market, output_dir)
+        learning_report = self._run_step_12_learning(
+            historical_data, validation_plan, all_evaluations, past_strategies,
+            brief, output_dir)
+        video_results, video_paths = self._run_step_13_video(
+            approved_variants, brief, production_report, output_dir)
 
-        # STEP 8 -> COMPLIANCE CHECK
-        step_start = time.perf_counter()
-        logger.info("STEP 8 -> COMPLIANCE CHECK")
-        compliance_report = self.compliance_agent.validate_compliance(
-            approved_variants,
-            brief,
-            platforms,
-            brand_assets,
-            geography_market,
-            constraints,
-        )
-        save_json(compliance_report, output_dir / "step_8_compliance.json")
-        logger.info(
-            "STEP 8 completed status=%s elapsed=%.3fs",
-            compliance_report.overall_status,
-            time.perf_counter() - step_start,
-        )
-
-        # STEP 9 -> ASSET PRODUCTION
-        step_start = time.perf_counter()
-        logger.info("STEP 9 -> ASSET PRODUCTION")
-        production_report = self.production_agent.plan_production(
-            approved_variants,
-            all_adaptations,
-            constraints,
-            brand_assets,
-        )
-        save_json(production_report, output_dir / "step_9_production.json")
-        logger.info(
-            "STEP 9 completed variant_count=%d elapsed=%.3fs",
-            len(production_report.production_variants),
-            time.perf_counter() - step_start,
-        )
-
-        # STEP 10 -> HUMAN / EXTERNAL VALIDATION
-        step_start = time.perf_counter()
-        logger.info("STEP 10 -> HUMAN / EXTERNAL VALIDATION")
-        latest_iteration_report = iteration_reports[
-            -1] if iteration_reports else None
-        if latest_iteration_report is None:
-            latest_iteration_report = IterationControlReport(
-                variant_plans=[],
-                cycle_count=0,
-                global_refinement_strategy="Passed on first pass.",
-            )
-
-        validation_plan = self.validation_agent.design_validation(
-            approved_variants,
-            brief,
-            all_evaluations,
-            latest_iteration_report,
-        )
-        save_json(validation_plan, output_dir / "step_10_validation.json")
-        logger.info(
-            "STEP 10 completed elapsed=%.3fs",
-            time.perf_counter() - step_start,
-        )
-
-        # STEP 11 -> DEPLOYMENT & EXPERIMENTATION
-        step_start = time.perf_counter()
-        logger.info("STEP 11 -> DEPLOYMENT & EXPERIMENTATION")
-        deployment_report = self.deployment_agent.plan_deployment(
-            approved_variants,
-            brief,
-            platforms,
-            budget,
-            timeline,
-            geography_market,
-        )
-        save_json(deployment_report, output_dir / "step_11_deployment.json")
-        logger.info(
-            "STEP 11 completed elapsed=%.3fs",
-            time.perf_counter() - step_start,
-        )
-
-        # STEP 12 -> LEARNING & SYSTEM IMPROVEMENT
-        step_start = time.perf_counter()
-        logger.info("STEP 12 -> LEARNING & SYSTEM IMPROVEMENT")
-        learning_report = self.learning_agent.capture_learnings(
-            historical_data,
-            validation_plan,
-            all_evaluations,
-            past_strategies + [brief],
-        )
-        save_json(learning_report, output_dir / "step_12_learning.json")
-        logger.info(
-            "STEP 12 completed elapsed=%.3fs",
-            time.perf_counter() - step_start,
-        )
-
-        # STEP 13 -> MULTI-VARIANT VIDEO GENERATION
-        step_start = time.perf_counter()
-        logger.info("STEP 13 -> MULTI-VARIANT VIDEO GENERATION (Veo 3.1)")
-        video_results: list[VideoGenerationResult] = []
-        video_paths: list[str] = []
-
-        for i, variant in enumerate(approved_variants[:3]):
-            safe_product = re.sub(r"[^a-zA-Z0-9_\-]", "_",
-                                  brief.product_name)[:20]
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            video_filename = f"ad_{safe_product}_{i}_{timestamp}.mp4"
-            video_output_path = output_dir / video_filename
-
-            logger.info(
-                "  Generating video for variant %d: %s",
-                i + 1,
-                video_output_path,
-            )
-
-            prod_plan = (production_report.production_variants[i] if i < len(
-                production_report.production_variants,) else
-                         production_report.production_variants[0])
-
-            result = self.video_agent.generate_video(
-                script=variant,
-                production_plan=prod_plan,
-                output_path=str(video_output_path),
-            )
-
-            if result:
-                video_results.append(result)
-                video_paths.append(str(video_output_path.absolute()))
-                logger.info(
-                    "  Video saved to %s",
-                    video_output_path,
-                )
-        logger.info(
-            "STEP 13 completed video_count=%d elapsed=%.3fs",
-            len(video_results),
-            time.perf_counter() - step_start,
-        )
-
-        # Save Final Result Report
-        pipeline_final_result = PipelineResult(
+        result = PipelineResult(
             strategy=brief,
             personas=personas,
             approved_variants=approved_variants,
@@ -946,9 +1009,5 @@ class OrchestratorPipeline:
             video_results=video_results,
             video_paths=video_paths,
         )
-        save_json(
-            pipeline_final_result,
-            output_dir / "pipeline_final_report.json",
-        )
-
-        return pipeline_final_result
+        save_json(result, output_dir / "pipeline_final_report.json")
+        return result
