@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # =============================================================================
 # Chain-of-Thought Reasoning Templates
 # =============================================================================
@@ -307,7 +306,7 @@ def build_strategy_prompt(
         execution_steps=[
             "ADVERSARIAL CHALLENGE: Define the 'Adversarial Market Challenge'",
             "SINGLE CONSUMER BENEFIT (SCB): Distill ALL product features into ONE benefit",
-            "MESSAGE PILLAR DESIGN: Create exactly 3 pillars targeting different psychological levers",
+            "MESSAGE PILLAR DESIGN: Create 3 pillars targeting different psychological levers",
             "CROSS-CHANNEL TACTICS: For each platform, define primary message, hook, and CTA",
             "SUCCESS METRICS (KPIs): Define 2-4 KPIs with numeric targets",
             "PRE-RELEASE TARGETS: Define exact score thresholds for AI evaluation",
@@ -317,7 +316,7 @@ def build_strategy_prompt(
         few_shot=f"{KPI_EXAMPLE}\n\n{MESSAGE_PILLARS_EXAMPLE}",
         constraints=[
             "NO GENERIC GOALS: 'Increase sales' is prohibited. Use 'Dethrone [incumbent]'",
-            "SCB TEST: If you cannot explain the benefit in one sentence, it is not specific enough",
+            "SCB TEST: If benefit can't be explained in one sentence, it is not specific enough",
             "FEASIBILITY: Strategy must be executable within provided budget and media plan",
             "PLATFORM FIT: If platforms not specified, infer 2-3 optimal platforms from audience",
             "OUTPUT VALIDATION: Response MUST include all fields in StrategyBrief schema",
