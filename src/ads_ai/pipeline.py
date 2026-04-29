@@ -73,7 +73,7 @@ DEFAULT_MAX_ITERATIONS = 3
 MAX_PARALLEL_EVALUATIONS = 4
 """Upper bound on concurrent variant evaluation threads."""
 
-PASSING_DECISIONS = frozenset({"GO", "CONDITIONAL GO"})
+PASSING_DECISIONS = frozenset({"GO"})
 """Set of variant decision labels that qualify for post-approval stages."""
 
 FAILING_DECISIONS = frozenset({"NO-GO", "CONDITIONAL GO"})
@@ -665,6 +665,10 @@ class OrchestratorPipeline:
         all_evaluations_out.clear()
         all_evaluations_out.extend(evaluations)
 
+        if readiness_report is None:
+            raise RuntimeError(
+                "readiness_report is None after evaluation loop; "
+                "this should never happen.")
         return readiness_report
 
     def apply_iteration_feedback(

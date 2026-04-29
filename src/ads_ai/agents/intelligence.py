@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import time
+from urllib.parse import urlparse
 
 from google import genai
 
@@ -11,6 +13,13 @@ from ads_ai.agents.base import BaseAgent
 from ads_ai.agents.models import ExtractedInputs
 
 logger = logging.getLogger(__name__)
+
+MAX_URL_LENGTH = 2048
+"""Maximum allowed URL length."""
+
+
+class URLValidationError(ValueError):
+    """Raised when a URL fails security or format validation."""
 
 
 class URLIntelligenceAgent(BaseAgent):
@@ -29,6 +38,40 @@ class URLIntelligenceAgent(BaseAgent):
         """
         super().__init__(client, model_name="gemini-3.1-pro-preview")
 
+    @staticmethod
+    def _validate_url(url: str) -> None:
+        """Validates a URL for security before passing it to the LLM.
+
+        Args:
+            url: The URL to validate.
+
+        Raises:
+            URLValidationError: If the URL is malformed, uses a non-HTTP(S)
+                scheme, targets a private IP, or exceeds the length limit.
+        """
+        if len(url) > MAX_URL_LENGTH:
+            raise URLValidationError(
+                f"URL exceeds maximum length of {MAX_URL_LENGTH} characters.")
+
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"}:
+            raise URLValidationError(
+                f"URL scheme must be http or https; got '{parsed.scheme}'.")
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise URLValidationError("URL is missing a valid hostname.")
+
+        try:
+            addr = ipaddress.ip_address(hostname)
+        except ValueError:
+            # hostname is not an IP address — acceptable
+            return
+
+        if addr.is_private or addr.is_loopback or addr.is_reserved:
+            raise URLValidationError(
+                f"URL targets a restricted IP address: {hostname}.")
+
     def parse_url(self, url: str) -> ExtractedInputs:
         """Extracts brand and product data from the provided URL.
 
@@ -39,9 +82,11 @@ class URLIntelligenceAgent(BaseAgent):
             An ``ExtractedInputs`` instance containing the parsed data.
 
         Raises:
+            URLValidationError: If the URL fails security validation.
             google.api_core.exceptions.InternalServerError: If URL access fails.
             ValueError: If response parsing fails.
         """
+        self._validate_url(url)
         logger.info("parse_url started url=%s", url)
         start = time.perf_counter()
         try:
@@ -65,7 +110,7 @@ class URLIntelligenceAgent(BaseAgent):
            found in the source material.
 
         CONSTRAINTS & RULES:
-        - ZERO HALLUCINATION: Do NOT invent features. If a benefit isn't explicitly
+        - ZERO-HALLUCINATION: Do NOT invent features. If a benefit isn't explicitly
           supported by the text, flag it as "Inferred."
         - PRECISION: Use exact numbers and data points (prices, speeds, stats) if present.
         - NO UNCERTAINTY: If a field cannot be inferred, state "Information not available."

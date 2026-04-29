@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock
+
 import pytest
 from google import genai
 
 from ads_ai.agents.creative import CreativeAgent
-from ads_ai.agents.video import VideoGenerationAgent
-from ads_ai.agents.scoring import ScoringAgent
 from ads_ai.agents.models import (
     AdScript,
     AssetProductionVariant,
-    CreativeVariants,
-    StrategyBrief,
     AudienceSegments,
     CompositeReadinessReport,
-    ShotSceneDesign,
+    CreativeVariants,
+    StrategyBrief,
 )
+from ads_ai.agents.scoring import ScoringAgent
+from ads_ai.agents.video import VideoGenerationAgent
 
 
 @pytest.fixture
@@ -46,18 +46,18 @@ class TestAgentQuality:
             concept_title="Test title",
             core_idea="Test idea",
             hook="Short and punchy hook.",  # < 15 words
-            script_scenes=[
-                {
+            script_scenes=[  # type: ignore[list-item]
+                {  # type: ignore[list-item]
                     "description": "S1",
                     "visual_cues": "C1",
                     "dialogue_vo": "D1"
                 },
-                {
+                {  # type: ignore[list-item]
                     "description": "S2",
                     "visual_cues": "C2",
                     "dialogue_vo": "D2"
                 },
-                {
+                {  # type: ignore[list-item]
                     "description": "S3",
                     "visual_cues": "C3",
                     "dialogue_vo": "D3"
@@ -122,7 +122,7 @@ class TestAgentQuality:
         # Mock high-score report with NO critical defects
         mock_report = CompositeReadinessReport(
             target_kpis=["ROI"],
-            variant_decisions=[{
+            variant_decisions=[{  # type: ignore[list-item]
                 "concept_title": "V1",
                 "final_readiness_score": 92.5,
                 "is_ready": True,
@@ -157,7 +157,7 @@ class TestAgentQuality:
         mock_report = BrandLinkageEvaluation(
             brand_attribution_summary="Logo is prominent in scene 1 and 3.",
             brand_linkage_score=90,
-            sub_scores={
+            sub_scores={  # type: ignore[arg-type]
                 "attribution_clarity": 95,
                 "timing": 85,
                 "integration": 90,
@@ -190,7 +190,7 @@ class TestAgentQuality:
             core_message="Buy our product.",
             message_consistency="High",
             clarity_score=65,  # Below target
-            sub_scores={
+            sub_scores={  # type: ignore[arg-type]
                 "comprehensibility": 70,
                 "cognitive_load": 60,
                 "explicitness": 65,

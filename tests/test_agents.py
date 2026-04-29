@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import time
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from google import genai
 import pytest
+from google import genai
 from pydantic import BaseModel
 
 from ads_ai.agents.base import BaseAgent
@@ -134,14 +132,14 @@ class TestSpecializedAgents:
 
     def test_strategy_agent_create_brief(self) -> None:
         """StrategyAgent should synthesize inputs into a StrategyBrief."""
-        from ads_ai.agents.strategy import StrategyAgent
         from ads_ai.agents.models import (
-            StrategyBrief,
             KPI,
-            PreReleaseTargets,
-            Persona,
             MessageStrategy,
+            Persona,
+            PreReleaseTargets,
+            StrategyBrief,
         )
+        from ads_ai.agents.strategy import StrategyAgent
 
         mock_client = MagicMock(spec=genai.Client)
         mock_brief = StrategyBrief(
@@ -205,7 +203,13 @@ class TestSpecializedAgents:
     def test_creative_agent_generate_variants(self) -> None:
         """CreativeAgent should generate multiple ad script variants."""
         from ads_ai.agents.creative import CreativeAgent
-        from ads_ai.agents.models import CreativeVariants, AdScript, StrategyBrief, AudienceSegments, Scene
+        from ads_ai.agents.models import (
+            AdScript,
+            AudienceSegments,
+            CreativeVariants,
+            Scene,
+            StrategyBrief,
+        )
 
         mock_client = MagicMock(spec=genai.Client)
         mock_variants = CreativeVariants(variants=[
@@ -255,15 +259,106 @@ class TestSpecializedAgents:
         assert len(result.variants) == 2
         assert result.variants[0].concept_title == "V1"
 
+    def test_creative_agent_refine_variants(self) -> None:
+        """CreativeAgent should refine variants based on iteration report."""
+        from ads_ai.agents.creative import CreativeAgent
+        from ads_ai.agents.models import (
+            AdScript,
+            CreativeVariants,
+            IterationControlReport,
+            Scene,
+        )
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_variants = CreativeVariants(variants=[
+            AdScript(
+                concept_title="V1",
+                core_idea="Improved",
+                hook="Better hook",
+                script_scenes=[
+                    Scene(description="S1", visual_cues="V1", dialogue_vo="D1")
+                ],
+                brand_integration="Logo.",
+                cta="Buy.",
+                video_prompt="4k.",
+                variant_name="V1",
+            ),
+        ])
+
+        mock_response = MagicMock()
+        mock_response.text = mock_variants.model_dump_json()
+        mock_client.models.generate_content.return_value = mock_response
+
+        agent = CreativeAgent(mock_client)
+        variants = [
+            AdScript(
+                concept_title="V1",
+                core_idea="Original",
+                hook="Weak hook",
+                script_scenes=[
+                    Scene(description="S1", visual_cues="V1", dialogue_vo="D1")
+                ],
+                brand_integration="Logo.",
+                cta="Buy.",
+                video_prompt="4k.",
+                variant_name="V1",
+            ),
+        ]
+        report = IterationControlReport(
+            variant_plans=[],
+            cycle_count=1,
+            global_refinement_strategy="Fix hook",
+        )
+
+        result = agent.refine_variants(variants, report)
+        assert len(result) == 1
+        assert result[0].core_idea == "Improved"
+
+    def test_creative_agent_refine_variants_failure(self) -> None:
+        """CreativeAgent should propagate errors during refinement."""
+        from ads_ai.agents.creative import CreativeAgent
+        from ads_ai.agents.models import (
+            AdScript,
+            IterationControlReport,
+            Scene,
+        )
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_client.models.generate_content.side_effect = RuntimeError("boom")
+
+        agent = CreativeAgent(mock_client)
+        variants = [
+            AdScript(
+                concept_title="V1",
+                core_idea="Original",
+                hook="Weak hook",
+                script_scenes=[
+                    Scene(description="S1", visual_cues="V1", dialogue_vo="D1")
+                ],
+                brand_integration="Logo.",
+                cta="Buy.",
+                video_prompt="4k.",
+                variant_name="V1",
+            ),
+        ]
+        report = IterationControlReport(
+            variant_plans=[],
+            cycle_count=1,
+            global_refinement_strategy="Fix hook",
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            agent.refine_variants(variants, report)
+
     def test_scoring_agent_aggregation(self) -> None:
         """ScoringAgent should aggregate multiple evaluations into a CompositeReadinessReport."""
+        from ads_ai.agents.models import AdScript, CategoryScore, CompositeReadinessReport
         from ads_ai.agents.scoring import ScoringAgent
-        from ads_ai.agents.models import CompositeReadinessReport, AdScript, CategoryScore
 
         mock_client = MagicMock(spec=genai.Client)
         mock_report = CompositeReadinessReport(
             target_kpis=["ROI"],
-            variant_decisions=[{
+            variant_decisions=[{  # type: ignore[list-item]
                 "concept_title":
                     "V1",
                 "final_readiness_score":
@@ -329,10 +424,10 @@ class TestSpecializedAgents:
         """IterationControllerAgent should produce an IterationControlReport."""
         from ads_ai.agents.iteration import IterationControllerAgent
         from ads_ai.agents.models import (
+            IterationAction,
             IterationControlReport,
             IterationDirective,
             PrioritizedIssue,
-            IterationAction,
             VariantIterationPlan,
         )
 
@@ -379,3 +474,168 @@ class TestSpecializedAgents:
 
         assert result.cycle_count == 1
         assert result.global_refinement_strategy == "Focus on hook clarity."
+
+    def test_validation_agent_design_validation(self) -> None:
+        """ExternalValidationAgent should produce an ExternalValidationPlan."""
+        from ads_ai.agents.models import (
+            ExternalValidationPlan,
+            IterationControlReport,
+            MessageStrategy,
+            PreReleaseTargets,
+            StrategyBrief,
+        )
+        from ads_ai.agents.validation import ExternalValidationAgent
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_plan = ExternalValidationPlan(
+            experiment_designs=[],
+            metric_mapping=[],
+            variant_validation_results=[],
+        )
+
+        mock_response = MagicMock()
+        mock_response.text = mock_plan.model_dump_json()
+        mock_client.models.generate_content.return_value = mock_response
+
+        agent = ExternalValidationAgent(mock_client)
+        brief = StrategyBrief(
+            product_name="Test",
+            ad_intent="Intent",
+            intent_explanation="Exp",
+            kpis=[],
+            pre_release_targets=PreReleaseTargets(
+                clarity_score_target=80,
+                brand_linkage_score_target=75,
+                hook_strength_threshold="High",
+                message_retention_likelihood="80%",
+                simulated_intent_score="80",
+            ),
+            audience_personas=[],
+            message_strategy=MessageStrategy(
+                value_proposition="Best",
+                message_pillars=["Price"],
+                tone="Professional",
+                emotional_trigger="Trust",
+            ),
+            creative_constraints={},
+            decision_thresholds={},
+        )
+        report = IterationControlReport(
+            variant_plans=[],
+            cycle_count=0,
+            global_refinement_strategy="",
+        )
+        result = agent.design_validation(
+            variants=[],
+            brief=brief,
+            evaluations=[],
+            iteration_report=report,
+        )
+
+        assert isinstance(result, ExternalValidationPlan)
+
+    def test_validation_agent_design_validation_failure(self) -> None:
+        """ExternalValidationAgent should propagate errors."""
+        from ads_ai.agents.models import (
+            IterationControlReport,
+            MessageStrategy,
+            PreReleaseTargets,
+            StrategyBrief,
+        )
+        from ads_ai.agents.validation import ExternalValidationAgent
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_client.models.generate_content.side_effect = RuntimeError("boom")
+
+        agent = ExternalValidationAgent(mock_client)
+        brief = StrategyBrief(
+            product_name="Test",
+            ad_intent="Intent",
+            intent_explanation="Exp",
+            kpis=[],
+            pre_release_targets=PreReleaseTargets(
+                clarity_score_target=80,
+                brand_linkage_score_target=75,
+                hook_strength_threshold="High",
+                message_retention_likelihood="80%",
+                simulated_intent_score="80",
+            ),
+            audience_personas=[],
+            message_strategy=MessageStrategy(
+                value_proposition="Best",
+                message_pillars=["Price"],
+                tone="Professional",
+                emotional_trigger="Trust",
+            ),
+            creative_constraints={},
+            decision_thresholds={},
+        )
+        report = IterationControlReport(
+            variant_plans=[],
+            cycle_count=0,
+            global_refinement_strategy="",
+        )
+        with pytest.raises(RuntimeError, match="boom"):
+            agent.design_validation(
+                variants=[],
+                brief=brief,
+                evaluations=[],
+                iteration_report=report,
+            )
+
+    def test_learning_agent_capture_learnings(self) -> None:
+        """KnowledgeLearningAgent should produce a KnowledgeLearningReport."""
+        from ads_ai.agents.learning import KnowledgeLearningAgent
+        from ads_ai.agents.models import (
+            ExternalValidationPlan,
+            KnowledgeLearningReport,
+        )
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_report = KnowledgeLearningReport(
+            campaign_records=[],
+            prediction_reality_reports=[],
+            key_patterns=[],
+            agent_performance_diagnostics=[],
+        )
+
+        mock_response = MagicMock()
+        mock_response.text = mock_report.model_dump_json()
+        mock_client.models.generate_content.return_value = mock_response
+
+        agent = KnowledgeLearningAgent(mock_client)
+        validation = ExternalValidationPlan(
+            experiment_designs=[],
+            metric_mapping=[],
+            variant_validation_results=[],
+        )
+        result = agent.capture_learnings(
+            historical_data=[],
+            validation_output=validation,
+            ai_outputs=[],
+            strategy_docs=[],
+        )
+
+        assert isinstance(result, KnowledgeLearningReport)
+
+    def test_learning_agent_capture_learnings_failure(self) -> None:
+        """KnowledgeLearningAgent should propagate errors."""
+        from ads_ai.agents.learning import KnowledgeLearningAgent
+        from ads_ai.agents.models import ExternalValidationPlan
+
+        mock_client = MagicMock(spec=genai.Client)
+        mock_client.models.generate_content.side_effect = RuntimeError("boom")
+
+        agent = KnowledgeLearningAgent(mock_client)
+        validation = ExternalValidationPlan(
+            experiment_designs=[],
+            metric_mapping=[],
+            variant_validation_results=[],
+        )
+        with pytest.raises(RuntimeError, match="boom"):
+            agent.capture_learnings(
+                historical_data=[],
+                validation_output=validation,
+                ai_outputs=[],
+                strategy_docs=[],
+            )

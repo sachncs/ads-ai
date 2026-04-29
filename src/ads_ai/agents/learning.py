@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from typing import Any
 
 from google import genai
 
@@ -32,10 +33,10 @@ class KnowledgeLearningAgent(BaseAgent):
 
     def capture_learnings(
         self,
-        historical_data: list[str],
+        historical_data: list[Any],
         validation_output: ExternalValidationPlan,
-        ai_outputs: list[str],
-        strategy_docs: list[str],
+        ai_outputs: list[Any],
+        strategy_docs: list[Any],
     ) -> KnowledgeLearningReport:
         """Captures and synthesizes learnings from campaign data.
 

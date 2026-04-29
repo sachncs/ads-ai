@@ -159,6 +159,9 @@ def main() -> None:
         logger.warning("Pipeline interrupted by user.")
         sys.exit(128 + 2)  # 130 = 128 + SIGINT(2)
 
+    except SystemExit:
+        raise
+
     except Exception:
         elapsed = time.perf_counter() - run_start
         logger.exception(

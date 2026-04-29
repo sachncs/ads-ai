@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   lint:
@@ -27,7 +27,7 @@ jobs:
         run: ruff check src/ tests/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: mypy src/ tests/ --ignore-missing-imports
 
   test:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[test]
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           GEMINI_API_KEY: dummy_key_for_ci
-        run: pytest tests/ -v
+        run: pytest tests/ -v --cov=src/ads_ai --cov-report=term-missing --cov-fail-under=80

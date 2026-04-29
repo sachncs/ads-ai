@@ -5,9 +5,6 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-import pytest
-from pydantic import ValidationError
-
 from ads_ai.config import Settings
 
 
@@ -16,7 +13,7 @@ class TestConfig:
 
     def test_settings_default_values(self) -> None:
         """Should have sensible defaults for model names and logs."""
-        settings = Settings(_env_file=None)  # type: ignore
+        settings = Settings(_env_file=None)  # type: ignore[call-arg]
         assert settings.default_text_model == "gemini-3.1-pro-preview"
         assert settings.log_level == "INFO"
 

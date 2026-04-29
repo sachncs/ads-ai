@@ -20,7 +20,7 @@ class FileOperationError(Exception):
 class ModelDumper(Protocol):
     """An object that exposes ``model_dump`` for serialization."""
 
-    def model_dump(self, mode: str = ...) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         ...
 
 
@@ -53,7 +53,7 @@ def ensure_output_dir(base_dir: str = "outputs") -> Path:
 
 
 def save_json(
-    data: ModelDumper | LegacyDumper | dict[str, Any] | list[Any] | JsonScalar,
+    data: Any,
     filepath: Path,
 ) -> None:
     """Serializes data to a JSON file.
@@ -79,7 +79,7 @@ def save_json(
         elif hasattr(data, "model_dump"):
             serialized = data.model_dump(mode="json")
         elif hasattr(data, "dict"):
-            serialized = data.dict()  # pragma: no cover
+            serialized = data.dict()
         else:
             raise TypeError(
                 f"data must be a dict, list, JSON scalar, or an object "
@@ -87,7 +87,7 @@ def save_json(
 
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(serialized, f, indent=2, ensure_ascii=False)
-    except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+    except (OSError, TypeError, ValueError) as e:
         exc = e
     finally:
         elapsed = time.perf_counter() - start

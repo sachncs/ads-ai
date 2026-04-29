@@ -7,28 +7,9 @@ from pydantic import ValidationError
 
 from ads_ai.agents.models import (
     AdScript,
-    AssetProductionReport,
-    AssetProductionVariant,
-    AttentionEvaluation,
-    AudienceSegments,
-    BrandLinkageEvaluation,
-    BudgetInferenceReport,
-    ClarityEvaluation,
-    ComplianceRiskReport,
-    CompositeReadinessReport,
-    CreativeVariants,
-    DeploymentExperimentationReport,
     DiagnosticsEvaluation,
-    ExternalValidationPlan,
     ExtractedInputs,
-    IntentEvaluation,
-    IterationControlReport,
-    KnowledgeLearningReport,
-    PlatformAdaptationReport,
-    Scene,
-    ShotSceneDesign,
     StrategyBrief,
-    VideoGenerationResult,
 )
 
 
@@ -51,13 +32,13 @@ class TestStep0Models:
             "cta_type": "Shop Now",
             "missing_information": [],
         }
-        model = ExtractedInputs(**data)
+        model = ExtractedInputs(**data)  # type: ignore[arg-type]
         assert model.brand_name == "ErgoRest"
 
     def test_extracted_inputs_invalid(self) -> None:
         """Should fail if required fields are missing."""
         with pytest.raises(ValidationError):
-            ExtractedInputs(brand_name="Incomplete")
+            ExtractedInputs(brand_name="Incomplete")  # type: ignore[call-arg]
 
 
 class TestStep1Models:
@@ -101,7 +82,7 @@ class TestStep1Models:
                 "min_score": 0.7
             },
         }
-        model = StrategyBrief(**data)
+        model = StrategyBrief(**data)  # type: ignore[arg-type]
         assert model.product_name == "ErgoRest Chair"
         assert len(model.kpis) == 1
 
@@ -125,7 +106,7 @@ class TestStep3Models:
             "video_prompt": "Cinematic 4k shot of an office.",
             "variant_name": "Variant A",
         }
-        model = AdScript(**data)
+        model = AdScript(**data)  # type: ignore[arg-type]
         assert model.concept_title == "The Infinite Hook"
         assert len(model.script_scenes) == 1
 
@@ -171,6 +152,6 @@ class TestStep4Models:
             "issues_identified": [],
             "recommended_fixes": [],
         }
-        model = DiagnosticsEvaluation(**data)
+        model = DiagnosticsEvaluation(**data)  # type: ignore[arg-type]
         assert model.coherence_score == 85
         assert model.hook_analysis.hook_strength_score == 90

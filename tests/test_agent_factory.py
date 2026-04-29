@@ -13,19 +13,17 @@ from ads_ai.agents import (
     AudienceAgent,
     BrandLinkageAgent,
     BudgetInferenceAgent,
-    MessageClarityAgent,
     ComplianceRiskAgent,
     CreativeAgent,
     DeploymentExperimentationAgent,
     DiagnosticsAgent,
-    URLIntelligenceAgent,
     IntentSimulationAgent,
     IterationControllerAgent,
-    KnowledgeLearningAgent,
+    MessageClarityAgent,
     PlatformAdaptationAgent,
     ScoringAgent,
     StrategyAgent,
-    ExternalValidationAgent,
+    URLIntelligenceAgent,
     VideoGenerationAgent,
 )
 
@@ -91,7 +89,8 @@ class TestAgentFactory:
                                     args: list, kwargs: dict) -> None:
         """Verifies that each agent correctly interacts with the LLM via its primary method."""
         # Setup mock response based on the agent's expected return type (schema)
-        # We don't need to return perfectly valid JSON for every field here, just enough to not crash.
+        # We don't need to return perfectly valid JSON for every field here,
+        # just enough to not crash.
         mock_response = MagicMock()
         mock_response.text = "{}"  # Minimal valid JSON
         mock_client.models.generate_content.return_value = mock_response
@@ -99,8 +98,9 @@ class TestAgentFactory:
         agent = agent_class(mock_client)
         method = getattr(agent, method_name)
 
-        # We wrap in try/except because some methods might fail on Pydantic validation of the empty {} response,
-        # but the point is to verify the LLM call was attempted with the right structure.
+        # We wrap in try/except because some methods might fail on Pydantic
+        # validation of the empty {} response, but the point is to verify the
+        # LLM call was attempted with the right structure.
         try:
             method(*args, **kwargs)
         except Exception:
@@ -112,6 +112,7 @@ class TestAgentFactory:
             self, mock_client: MagicMock) -> None:
         """VideoGenerationAgent needs special handling as it doesn't return a Pydantic model."""
         agent = VideoGenerationAgent(mock_client)
-        # Mocking the actual video generation would be too complex, but we can verify the prompt synthesis
-        # if we had a way to intercept it. For now, we just verify it exists.
+        # Mocking the actual video generation would be too complex, but we can
+        # verify the prompt synthesis if we had a way to intercept it. For now,
+        # we just verify it exists.
         assert hasattr(agent, "generate_video")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from typing import Any
 
 from google import genai
 
@@ -39,7 +40,7 @@ class ExternalValidationAgent(BaseAgent):
         self,
         variants: list[AdScript],
         brief: StrategyBrief,
-        evaluations: list[str],
+        evaluations: list[Any],
         iteration_report: IterationControlReport,
     ) -> ExternalValidationPlan:
         """Designs the experimental validation plan.

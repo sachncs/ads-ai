@@ -1,7 +1,7 @@
 """Standalone test runner using unittest to bypass pytest environment issues."""
 
-import sys
 import os
+import sys
 import unittest
 from unittest.mock import MagicMock
 
@@ -9,19 +9,19 @@ from unittest.mock import MagicMock
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from ads_ai.agents.video import VideoGenerationAgent
 from ads_ai.agents.creative import CreativeAgent
 from ads_ai.agents.models import AdScript, CreativeVariants
+from ads_ai.agents.video import VideoGenerationAgent
 
 
 class TestAgentLogicStandalone(unittest.TestCase):
     """Core logic tests for agents without pytest dependencies."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.mock_client = MagicMock()
         self.mock_client.models = MagicMock()
 
-    def test_video_agent_prompt_synthesis(self):
+    def test_video_agent_prompt_synthesis(self) -> None:
         """Verify VideoGenerationAgent synthesizes cinematic prompts."""
         agent = VideoGenerationAgent(self.mock_client)
         script = MagicMock(spec=AdScript)
@@ -38,7 +38,7 @@ class TestAgentLogicStandalone(unittest.TestCase):
         self.assertIn("4k", prompt.lower())
         print("VideoGenerationAgent synthesis: OK")
 
-    def test_creative_agent_variant_generation(self):
+    def test_creative_agent_variant_generation(self) -> None:
         """Verify CreativeAgent produces structured variants."""
         agent = CreativeAgent(self.mock_client)
         mock_variant = AdScript(concept_title="T",

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, overload
+from typing import Any, TypeVar, overload
 
 from google import genai  # type: ignore[attr-defined]
 from pydantic import BaseModel
 
 from ads_ai.config import settings
+
+T = TypeVar("T", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +60,31 @@ class BaseAgent:
             return {k: self.to_json_dict(v) for k, v in obj.items()}
         return obj
 
+    @staticmethod
+    def _is_retryable(err: Exception) -> bool:
+        """Determines whether an upstream error warrants a retry.
+
+        Checks common SDK attributes (``code``, ``status_code``) before
+        falling back to a conservative string search for ``503``.
+
+        Args:
+            err: The exception raised by the upstream API call.
+
+        Returns:
+            ``True`` if the error looks like a transient service error.
+        """
+        if hasattr(err, "code") and getattr(err, "code", None) == 503:
+            return True
+        if hasattr(err, "status_code") and getattr(err, "status_code", None) == 503:
+            return True
+        return "503" in str(err)
+
     @overload
     def generate(
         self,
         prompt: str,
-        response_schema: type[BaseModel],
-    ) -> BaseModel:
+        response_schema: type[T],
+    ) -> T:
         ...
 
     @overload
@@ -77,8 +98,8 @@ class BaseAgent:
     def generate(
         self,
         prompt: str,
-        response_schema: type[BaseModel] | None = None,
-    ) -> BaseModel | str:
+        response_schema: type[T] | None = None,
+    ) -> T | str:
         """Sends a prompt to the LLM and validates the response.
 
         Args:
@@ -93,7 +114,7 @@ class BaseAgent:
 
         Raises:
             ValueError: If JSON parsing or Pydantic validation fails.
-            Exception: Propagates from the upstream API on non-503 errors.
+            Exception: Propagates from the upstream API on non-retryable errors.
         """
         llm_config: dict[str, Any] = {"response_mime_type": "application/json"}
         response_schema_name: str | None = None
@@ -142,8 +163,7 @@ class BaseAgent:
                 raw_response_text = api_response.text
                 break
             except Exception as e:
-                error_message = str(e)
-                if "503" in error_message and retry_attempt < max_retries - 1:
+                if self._is_retryable(e) and retry_attempt < max_retries - 1:
                     logger.warning(
                         "Gemini API 503 (attempt %d/%d). Retrying in %ds. "
                         "agent=%s model=%s error=%s",
@@ -152,7 +172,7 @@ class BaseAgent:
                         backoff_delay,
                         self.__class__.__name__,
                         self.model_name,
-                        error_message[:100],
+                        str(e)[:100],
                     )
                     time.sleep(backoff_delay)
                     backoff_delay *= 2
@@ -162,7 +182,7 @@ class BaseAgent:
                     self.__class__.__name__,
                     self.model_name,
                     retry_attempt + 1,
-                    error_message[:200],
+                    str(e)[:200],
                 )
                 raise
 

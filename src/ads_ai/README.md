@@ -49,10 +49,26 @@ Configuration management for the pipeline.
 ## Usage
 
 ```python
-from ads_ai import OrchestratorPipeline
+from google import genai
+from ads_ai.pipeline import OrchestratorPipeline
 
-pipeline = OrchestratorPipeline()
-result = pipeline.run(campaign brief)
+client = genai.Client(api_key="your-api-key")
+pipeline = OrchestratorPipeline(client)
+
+# Run from explicit inputs
+result = pipeline.run(
+    product="Ergonomic Office Chair",
+    goal="Maximize Q4 Sales",
+    audience_desc="Remote workers aged 25-45 with back pain",
+    platforms=["Meta", "TikTok"],
+)
+
+# Or run from a product URL
+result = pipeline.run_from_url(
+    url="https://example.com/product",
+    goal="Maximize Q4 Sales",
+    platforms=["Meta", "TikTok"],
+)
 ```
 
 ## Requirements

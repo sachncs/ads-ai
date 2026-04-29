@@ -1,42 +1,32 @@
+# mypy: disable-error-code="attr-defined"
 """Integration tests for the OrchestratorPipeline step-by-step logic."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from google import genai
 import pytest
+from google import genai
 
-from ads_ai.pipeline import OrchestratorPipeline
 from ads_ai.agents.models import (
-    StrategyBrief,
-    AudienceSegments,
-    CreativeVariants,
     AdScript,
-    CompositeReadinessReport,
-    IterationControlReport,
-    PlatformAdaptationReport,
-    ComplianceRiskReport,
     AssetProductionReport,
-    ExternalValidationPlan,
-    DeploymentExperimentationReport,
-    KnowledgeLearningReport,
-    Scene,
-    VariantComplianceReport,
     AssetProductionVariant,
-    ExperimentDesign,
-    MetricMapping,
-    VariantValidationResult,
-    ExperimentLaunchPlan,
-    CampaignRecord,
-    PredictionRealityReport,
-    KeyPatterns,
-    AgentPerformance,
-    PlatformAdaptations,
+    AudienceSegments,
+    ComplianceRiskReport,
+    CompositeReadinessReport,
+    CreativeVariants,
+    DeploymentExperimentationReport,
+    ExternalValidationPlan,
+    IterationControlReport,
+    KnowledgeLearningReport,
+    PlatformAdaptationReport,
+    Scene,
     ShotSceneDesign,
+    StrategyBrief,
     VideoGenerationResult,
 )
+from ads_ai.pipeline import OrchestratorPipeline
 
 
 class TestOrchestratorPipeline:
@@ -70,7 +60,7 @@ class TestOrchestratorPipeline:
     def test_pipeline_run_success_first_pass(
             self, mock_orchestrator: OrchestratorPipeline) -> None:
         """Should complete the pipeline if variants pass on the first iteration."""
-        from ads_ai.agents.models import StrategyBrief, AudienceSegments, Persona, MessageStrategy, PreReleaseTargets, KPI
+        from ads_ai.agents.models import KPI, MessageStrategy, Persona, PreReleaseTargets
 
         # Use real model instances for strategy/audience (accessed in post-approval stages)
         mock_brief = StrategyBrief(
@@ -105,13 +95,12 @@ class TestOrchestratorPipeline:
         )
         mock_orchestrator.strategy_agent.create_brief.return_value = mock_brief
         from ads_ai.agents.models import (
-            StrategyBrief,
-            AudienceSegments,
-            Persona,
-            MessageStrategy,
-            PreReleaseTargets,
             KPI,
+            AudienceSegments,
             CrossPersonaInsights,
+            MessageStrategy,
+            Persona,
+            PreReleaseTargets,
         )
         cross_insights = CrossPersonaInsights(
             common_strengths=[],
@@ -170,19 +159,26 @@ class TestOrchestratorPipeline:
                     estimated_production_complexity="Low",
                 )
             ])
-        mock_orchestrator.validation_agent.design_validation.return_value = ExternalValidationPlan(
-            experiment_designs=[],
-            metric_mapping=[],
-            variant_validation_results=[])
-        mock_orchestrator.deployment_agent.plan_deployment.return_value = DeploymentExperimentationReport(
-            launch_plans=[], test_timeline="", scaling_triggers=[])
-        mock_orchestrator.learning_agent.capture_learnings.return_value = KnowledgeLearningReport(
-            campaign_records=[],
-            prediction_reality_reports=[],
-            key_patterns=[],
-            agent_performance_diagnostics=[])
-        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(
-            video_file_path="test.mp4")
+        mock_orchestrator.validation_agent.design_validation.return_value = (
+            ExternalValidationPlan(
+                experiment_designs=[],
+                metric_mapping=[],
+                variant_validation_results=[])
+        )
+        mock_orchestrator.deployment_agent.plan_deployment.return_value = (
+            DeploymentExperimentationReport(
+                launch_plans=[], test_timeline="", scaling_triggers=[])
+        )
+        mock_orchestrator.learning_agent.capture_learnings.return_value = (
+            KnowledgeLearningReport(
+                campaign_records=[],
+                prediction_reality_reports=[],
+                key_patterns=[],
+                agent_performance_diagnostics=[])
+        )
+        mock_orchestrator.video_agent.generate_video.return_value = (
+            VideoGenerationResult(video_file_path="test.mp4")
+        )
 
         result = mock_orchestrator.run(
             product="Product",
@@ -198,13 +194,11 @@ class TestOrchestratorPipeline:
             self, mock_orchestrator: OrchestratorPipeline) -> None:
         """Should terminate after max iterations even if no variants pass."""
         from ads_ai.agents.models import (
-            StrategyBrief,
-            AudienceSegments,
-            Persona,
-            MessageStrategy,
-            PreReleaseTargets,
             KPI,
             CrossPersonaInsights,
+            MessageStrategy,
+            Persona,
+            PreReleaseTargets,
         )
         cross_insights = CrossPersonaInsights(
             common_strengths=[],
@@ -311,19 +305,26 @@ class TestOrchestratorPipeline:
                     estimated_production_complexity="Low",
                 )
             ])
-        mock_orchestrator.validation_agent.design_validation.return_value = ExternalValidationPlan(
-            experiment_designs=[],
-            metric_mapping=[],
-            variant_validation_results=[])
-        mock_orchestrator.deployment_agent.plan_deployment.return_value = DeploymentExperimentationReport(
-            launch_plans=[], test_timeline="", scaling_triggers=[])
-        mock_orchestrator.learning_agent.capture_learnings.return_value = KnowledgeLearningReport(
-            campaign_records=[],
-            prediction_reality_reports=[],
-            key_patterns=[],
-            agent_performance_diagnostics=[])
-        mock_orchestrator.video_agent.generate_video.return_value = VideoGenerationResult(
-            video_file_path="test.mp4")
+        mock_orchestrator.validation_agent.design_validation.return_value = (
+            ExternalValidationPlan(
+                experiment_designs=[],
+                metric_mapping=[],
+                variant_validation_results=[])
+        )
+        mock_orchestrator.deployment_agent.plan_deployment.return_value = (
+            DeploymentExperimentationReport(
+                launch_plans=[], test_timeline="", scaling_triggers=[])
+        )
+        mock_orchestrator.learning_agent.capture_learnings.return_value = (
+            KnowledgeLearningReport(
+                campaign_records=[],
+                prediction_reality_reports=[],
+                key_patterns=[],
+                agent_performance_diagnostics=[])
+        )
+        mock_orchestrator.video_agent.generate_video.return_value = (
+            VideoGenerationResult(video_file_path="test.mp4")
+        )
 
         result = mock_orchestrator.run(product="Product",
                                        goal="Goal",

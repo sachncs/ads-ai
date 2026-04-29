@@ -71,13 +71,29 @@ Key variables:
 
 ## 🧪 Quality & Testing
 
-Ads.ai maintains a rigorous test suite with > 35% code coverage, focusing on:
+Ads.ai maintains a rigorous test suite with > 90% code coverage, focusing on:
 *   **Pydantic Guardrails**: 40+ models validated for strict schema integrity.
 *   **Quantified Quality**: Tests that verify "Cinematic Markers" and "Hook Strength" in agent outputs.
 *   **Stand-alone Verification**: Bypass local environment issues using our standalone runner:
     ```bash
     python3 tests/standalone_runner.py
     ```
+
+### Running Tests
+```bash
+# Install test dependencies
+pip install -e ".[test]"
+
+# Run the full suite with coverage
+pytest tests/ -v --cov=src/ads_ai --cov-report=term-missing
+```
+
+### Linting & Type Checking
+```bash
+pip install -e ".[lint]"
+ruff check src/ tests/
+mypy src/ --ignore-missing-imports
+```
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

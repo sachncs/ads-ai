@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import google.genai as genai
 import pytest
 
-from ads_ai.agents import ExtractedInputs
-from ads_ai.agents import URLIntelligenceAgent
+from ads_ai.agents import ExtractedInputs, URLIntelligenceAgent
+from ads_ai.agents.intelligence import URLValidationError
 from ads_ai.config import get_settings
 from ads_ai.pipeline import OrchestratorPipeline
 
@@ -60,6 +60,30 @@ class TestURLIntelligenceAgent:
 
         assert result.brand_name == "Test Brand"
         assert "A" in result.inferred_segments
+
+    def test_validate_url_rejects_file_scheme(self) -> None:
+        """Should raise URLValidationError for non-HTTP(S) schemes."""
+        with pytest.raises(URLValidationError, match="scheme must be http or https"):
+            URLIntelligenceAgent._validate_url("file:///etc/passwd")
+
+    def test_validate_url_rejects_private_ip(self) -> None:
+        """Should raise URLValidationError for private IP addresses."""
+        with pytest.raises(URLValidationError, match="restricted IP"):
+            URLIntelligenceAgent._validate_url("http://192.168.1.1")
+
+    def test_validate_url_rejects_loopback(self) -> None:
+        """Should raise URLValidationError for loopback addresses."""
+        with pytest.raises(URLValidationError, match="restricted IP"):
+            URLIntelligenceAgent._validate_url("http://127.0.0.1")
+
+    def test_validate_url_rejects_too_long(self) -> None:
+        """Should raise URLValidationError for excessively long URLs."""
+        with pytest.raises(URLValidationError, match="exceeds maximum length"):
+            URLIntelligenceAgent._validate_url("https://example.com/" + "x" * 3000)
+
+    def test_validate_url_accepts_valid_https(self) -> None:
+        """Should not raise for a well-formed HTTPS URL."""
+        URLIntelligenceAgent._validate_url("https://example.com/product")
 
 
 class TestOrchestratorInitialization:
