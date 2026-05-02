@@ -13,6 +13,8 @@ Ads.ai is a production-grade, multi-agent AI framework for end-to-end advertisin
 
 Ads.ai employs a recursive orchestration pattern where a central `OrchestratorPipeline` manages state and data flow between specialized agents through a strict 13-step workflow.
 
+> **New in v0.2.0**: The `PipelineStageRegistry` provides a dynamic stage system with declarative configurations, dependency resolution, topological sorting, parallel execution hints, and configurable retry policies. Use `PipelineStageRegistry.create_legacy()` to bootstrap the standard 13-step pipeline.
+
 ```mermaid
 graph TD
     User([User Input]) --> URL[URL Intelligence Agent]

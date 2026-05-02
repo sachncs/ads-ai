@@ -317,7 +317,7 @@ class PipelineStageRegistry:
         Returns:
             A dictionary mapping stage IDs to their execution results.
         """
-        output_path = ensure_output_dir(output_dir or "outputs")
+        output_path = ensure_output_dir(str(output_dir) if output_dir else "outputs")
         results: dict[str, StageExecutionResult] = {}
         resolved_context = dict(context)
 

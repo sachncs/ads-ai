@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ def agent_timing(
     logger: logging.Logger,
     operation_name: str,
     *args: object,
-) -> list[object]:
+) -> Iterator[list[tuple[str, object]]]:
     """Context manager for timing agent operations with structured logging.
 
     Args:
@@ -37,7 +38,6 @@ def agent_timing(
     """
     start = time.perf_counter()
     exc: Exception | None = None
-    # Collect metadata from args (key=value pairs)
     metadata: list[tuple[str, object]] = []
     for i in range(0, len(args), 2):
         if i + 1 < len(args):
