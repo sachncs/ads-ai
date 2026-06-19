@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     max_retries: int = DEFAULT_MAX_RETRIES
     retry_delay: int = DEFAULT_RETRY_DELAY
     log_level: str = DEFAULT_LOG_LEVEL
+    video_timeout_seconds: int = 300
 
 
 def get_settings() -> Settings:

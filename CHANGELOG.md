@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- SECURITY.md — security vulnerability reporting policy
+- .editorconfig — consistent editor formatting rules
+- .gitattributes — line ending normalization
+- .pre-commit-config.yaml — pre-commit hooks for linting and formatting
+- GitHub Actions release workflow for automated PyPI publishing
+- GitHub issue templates (bug report, feature request)
+- GitHub pull request template
+- GitHub Dependabot configuration for weekly dependency updates
+- GitHub FUNDING.yml for sponsorship links
+- Agent overview documentation (`ads_ai/agents/README.md`)
+- Getting started guide (`docs/getting-started.md`)
+- FAQ documentation (`docs/faq.md`)
+- `VIDEO_TIMEOUT_SECONDS` environment variable for configurable video generation timeout
+
+### Changed
+- Expanded .gitignore with comprehensive Python, IDE, and OS file coverage
+- Improved README with badges, project structure, tech stack table, roadmap, architecture diagram, and community links
+- Enhanced CONTRIBUTING.md with conventional commits, branch naming, and expanded quality requirements
+- Added [Unreleased] section to CHANGELOG
+- CI test matrix now runs across Python 3.10, 3.11, and 3.12
+- Added Python 3.13 classifier to pyproject.toml
+
+### Fixed
+- Corrected broken link to `ads_ai/agents/README.md` in main README
+
 ## [0.2.0] - 2026-04-29
 
 ### Added

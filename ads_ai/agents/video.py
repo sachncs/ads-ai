@@ -19,7 +19,7 @@ from ads_ai.config import settings
 logger = logging.getLogger(__name__)
 
 DEFAULT_VIDEO_TIMEOUT_SECONDS = 300
-"""Maximum seconds to wait for video generation to complete."""
+"""Fallback timeout (seconds) when ``VIDEO_TIMEOUT_SECONDS`` env var is not set."""
 
 
 class VideoGenerationError(Exception):
@@ -166,7 +166,7 @@ class VideoGenerationAgent(BaseAgent):
             )
 
             # Poll the operation status until the video is ready.
-            video_timeout_seconds = DEFAULT_VIDEO_TIMEOUT_SECONDS
+            video_timeout_seconds = settings.video_timeout_seconds
             polling_start = time.perf_counter()
             while not video_operation.done:
                 elapsed = time.perf_counter() - polling_start
