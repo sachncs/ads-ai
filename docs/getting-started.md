@@ -11,7 +11,7 @@ This guide walks you through setting up and running your first ad generation pip
 
 ```bash
 # Clone the repository
-git clone https://github.com/sachn-cs/ads-ai.git
+git clone https://github.com/sachncs/ads-ai.git
 cd ads-ai
 
 # Install in editable mode

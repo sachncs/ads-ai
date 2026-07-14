@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/sachn-cs/ads-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/sachn-cs/ads-ai/actions/workflows/ci.yml)
+[![CI](https://github.com/sachncs/ads-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/sachncs/ads-ai/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/sachn-cs/ads-ai/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/sachncs/ads-ai/releases)
 
 # Ads.ai — Multi-Agent Advertising Intelligence Pipeline
 
@@ -25,7 +25,7 @@ A production-grade, multi-agent AI framework for end-to-end advertising campaign
 ### Installation
 
 ```bash
-git clone https://github.com/sachn-cs/ads-ai.git
+git clone https://github.com/sachncs/ads-ai.git
 cd ads-ai
 pip install -e .
 ```
@@ -227,8 +227,8 @@ For reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Community
 
-- [GitHub Discussions](https://github.com/sachn-cs/ads-ai/discussions) — Ask questions, share ideas, and discuss the project
-- [Issue Tracker](https://github.com/sachn-cs/ads-ai/issues) — Report bugs and request features
+- [GitHub Discussions](https://github.com/sachncs/ads-ai/discussions) — Ask questions, share ideas, and discuss the project
+- [Issue Tracker](https://github.com/sachncs/ads-ai/issues) — Report bugs and request features
 
 ## License
 

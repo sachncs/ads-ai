@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub issue templates (bug report, feature request)
 - GitHub pull request template
 - GitHub Dependabot configuration for weekly dependency updates
-- GitHub FUNDING.yml for sponsorship links
 - Agent overview documentation (`ads_ai/agents/README.md`)
 - Getting started guide (`docs/getting-started.md`)
 - FAQ documentation (`docs/faq.md`)
@@ -69,12 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `save_json()` protocol simplified to accept `Any`, resolving Pydantic v2 compatibility issues.
 - `capture_learnings()` and `design_validation()` signatures relaxed to accept `list[Any]`.
 
-## [0.1.1] - 2024-04-28
+## [0.1.1] - 2026-04-28
 
 ### Fixed
 - Patch release with minor dependency updates.
 
-## [0.1.0] - 2024-04-04
+## [0.1.0] - 2026-04-04
 
 ### Added
 - Initial release of the ads-ai multi-agent advertising pipeline.

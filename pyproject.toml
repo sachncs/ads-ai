@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "sachn-cs", email = "chakravarthy1393966@gmail.com" },
+    { name = "Sachin", email = "sachncs@gmail.com" },
 ]
 keywords = [
     "ai",
@@ -55,10 +55,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sachn-cs/ads-ai"
-Documentation = "https://github.com/sachn-cs/ads-ai#readme"
-Repository = "https://github.com/sachn-cs/ads-ai"
-Issues = "https://github.com/sachn-cs/ads-ai/issues"
+Homepage = "https://github.com/sachncs/ads-ai"
+Documentation = "https://github.com/sachncs/ads-ai#readme"
+Repository = "https://github.com/sachncs/ads-ai"
+Issues = "https://github.com/sachncs/ads-ai/issues"
 
 [project.scripts]
 ads-ai = "ads_ai.main:main"
